@@ -1,0 +1,1738 @@
+<template>
+  <div class="bill-stop-view">
+    <!-- Page Header -->
+    <div class="page-header">
+      <div class="page-header__content">
+        <h1 class="page-header__title">Bill Stop Analysis</h1>
+        <p class="page-header__subtitle">Identify customers with billing issues and missing meter readings</p>
+      </div>
+      <div class="page-header__actions">
+        <button class="btn btn--primary" @click="exportResults" v-if="analysisResults.length > 0">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7,10 12,15 17,10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Export Results
+        </button>
+        <button class="btn btn--secondary" @click="generateReport" :disabled="isGenerating">
+          {{ isGenerating ? 'Generating...' : 'Generate Bill Stop Report' }}
+        </button>
+        <button class="btn btn--outline" @click="downloadBillStopList" :disabled="isDownloading">
+          Download Bill Stop Customers (Excel)
+        </button>
+        
+      </div>
+    </div>
+
+    <!-- Summary Bar -->
+    <div v-if="reportSummary" class="summary-cards">
+      <div class="summary-card total">
+        <div class="summary-card__title">Total Bill Stop</div>
+        <div class="summary-card__value">{{ reportSummary.totalBillStop }}</div>
+      </div>
+      <div class="summary-card success">
+        <div class="summary-card__title">Current Month Reads</div>
+        <div class="summary-card__value">{{ reportSummary.withBillingProfileData }}</div>
+      </div>
+      <div class="summary-card warn">
+        <div class="summary-card__title">No Current Month Reads</div>
+        <div class="summary-card__value">{{ reportSummary.withoutBillingProfileData }}</div>
+      </div>
+      <div class="summary-card info">
+        <div class="summary-card__title">Complete Coverage (last 3 months)</div>
+        <div class="summary-card__value">{{ reportSummary.completeCoverage ?? '-' }}</div>
+      </div>
+      <div class="summary-card info">
+        <div class="summary-card__title">Partial Coverage (last 3 months)</div>
+        <div class="summary-card__value">{{ reportSummary.partialCoverage ?? '-' }}</div>
+      </div>
+      <div class="summary-card danger">
+        <div class="summary-card__title">No Coverage (last 3 months)</div>
+        <div class="summary-card__value">{{ reportSummary.noCoverage ?? '-' }}</div>
+      </div>
+      <div class="summary-card warn">
+        <div class="summary-card__title">Installed This Month (No Bill Yet)</div>
+        <div class="summary-card__value">{{ reportSummary.installedThisMonthNoBill ?? '-' }}</div>
+      </div>
+    </div>
+
+    <!-- Analysis Methods -->
+    <div class="analysis-methods">
+      <div class="analysis-methods__grid">
+        <!-- Bulk Analysis Card -->
+        <div class="card analysis-card">
+          <div class="card__header">
+            <h3 class="card__title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14,2 14,8 20,8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10,9 9,9 8,9"/>
+              </svg>
+              Bulk Analysis (CSV Upload)
+            </h3>
+          </div>
+          <div class="card__content">
+            <form @submit.prevent="uploadAndAnalyze" class="upload-form">
+              <div class="form-group">
+                <label for="file" class="form-label">Select CSV File</label>
+                <div class="file-upload">
+                  <input 
+                    type="file" 
+                    id="file" 
+                    ref="fileInput" 
+                    @change="handleFileUpload" 
+                    accept=".csv"
+                    class="file-upload__input"
+                  >
+                  <div class="file-upload__display">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="17,8 12,3 7,8"/>
+                      <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    <span v-if="file">{{ file.name }}</span>
+                    <span v-else>Choose a CSV file or drag it here</span>
+                  </div>
+                </div>
+                <div class="form-text">
+                  CSV should contain: CUSTOMER_NUM, METER_NO
+                </div>
+              </div>
+              <button type="submit" class="btn btn--primary" :disabled="!file || isAnalyzing">
+                <div v-if="isAnalyzing" class="colorful-loader"></div>
+                <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7,10 12,15 17,10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                {{ isAnalyzing ? 'Analyzing...' : 'Upload and Analyze' }}
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Individual Analysis Card -->
+        <div class="card analysis-card">
+          <div class="card__header">
+            <h3 class="card__title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+              </svg>
+              Individual Customer Analysis
+            </h3>
+          </div>
+          <div class="card__content">
+            <form @submit.prevent="analyzeIndividualCustomer" class="individual-form">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="customerNum" class="form-label">Customer Number</label>
+                  <input 
+                    type="text" 
+                    id="customerNum" 
+                    v-model="individualAnalysis.customerNum" 
+                    class="form-control"
+                    required
+                    placeholder="Enter customer number"
+                  >
+                </div>
+                <div class="form-group">
+                  <label for="meterNo" class="form-label">Meter Number</label>
+                  <input 
+                    type="text" 
+                    id="meterNo" 
+                    v-model="individualAnalysis.meterNo" 
+                    class="form-control"
+                    required
+                    placeholder="Enter meter number"
+                  >
+                </div>
+              </div>
+              <button type="submit" class="btn btn--success" :disabled="isAnalyzing">
+                <div v-if="isAnalyzing" class="colorful-loader"></div>
+                <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"/>
+                  <path d="M21 21l-4.35-4.35"/>
+                </svg>
+                {{ isAnalyzing ? 'Analyzing...' : 'Analyze Customer' }}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div v-if="message" class="alert" :class="messageClass" role="alert">
+      <div class="alert__content">
+        <svg v-if="messageClass.includes('success')" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22,4 12,14.01 9,11.01"/>
+        </svg>
+        <svg v-else-if="messageClass.includes('danger')" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="15" y1="9" x2="9" y2="15"/>
+          <line x1="9" y1="9" x2="15" y2="15"/>
+        </svg>
+        <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        {{ message }}
+      </div>
+    </div>
+
+    <!-- Analysis Results -->
+    <div v-if="analysisResults.length > 0" class="results-section">
+      <div class="results-header">
+        <h2 class="results-title">Analysis Results</h2>
+        <div class="results-summary">
+          <span class="results-count">{{ analysisResults.length }} customers processed</span>
+                          <div class="results-stats">
+                  <span class="stat">
+                    <span class="stat__label">Analyzed:</span>
+                    <span class="stat__value">{{ analysisResults.filter(r => r.status === 'ANALYZED').length }}</span>
+                  </span>
+                  <span class="stat">
+                    <span class="stat__label">Missing Data:</span>
+                    <span class="stat__value">{{ analysisResults.filter(r => r.billStopIssues && r.billStopIssues.length > 0).length }}</span>
+                  </span>
+                  <span class="stat">
+                    <span class="stat__label">Errors:</span>
+                    <span class="stat__value">{{ analysisResults.filter(r => r.status === 'ERROR').length }}</span>
+                  </span>
+                </div>
+        </div>
+      </div>
+
+      <div class="results-grid">
+        <div v-for="(result, index) in analysisResults" :key="index" class="result-card">
+          <div class="result-card__header" :class="getStatusClass(result.status)">
+            <div class="result-card__title">
+              <h4>Customer: {{ result.customerNumber }}</h4>
+              <p>Meter: {{ result.meterNumber }}</p>
+              <p v-if="result.lastBillDate">Last Bill Date: {{ formatDate(result.lastBillDate) }}</p>
+              <span v-if="result.tariff" class="badge badge--primary">{{ result.tariff }}</span>
+            </div>
+            <div class="result-card__status">
+              <span class="badge" :class="getStatusBadgeClass(result.status)">
+                {{ result.status }}
+              </span>
+            </div>
+            <div class="result-card__actions">
+              <button class="btn btn--sm btn--outline-primary" @click="downloadExcel(result)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Excel
+              </button>
+              <button class="btn btn--sm btn--outline-secondary" @click="downloadPdf(result)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                PDF
+              </button>
+              <button class="btn btn--sm btn--outline-primary" @click="analyzeWithAi(result.customerNumber)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                Analyze with AI
+              </button>
+            </div>
+          </div>
+
+          <div class="result-card__content">
+            <!-- Bill Start Info -->
+            <div v-if="result.status === 'BILL_START'" class="analysis-section">
+              <h6 class="analysis-section__title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+                Bill Start Customer - MDM Reads
+              </h6>
+              <div v-if="result.mdmReads && result.mdmReads.length > 0" class="readings-table">
+                <table class="table">
+                  <thead class="table__header">
+                    <tr class="table__row">
+                      <th class="table__cell table__cell--header">Date</th>
+                      <th class="table__cell table__cell--header">Reading Type</th>
+                      <th class="table__cell table__cell--header">Value</th>
+                      <th class="table__cell table__cell--header">Remark</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="reading in result.mdmReads" :key="reading.MSRMT_DTTM" class="table__row">
+                      <td class="table__cell">{{ formatDate(reading.MSRMT_DTTM) }}</td>
+                      <td class="table__cell">{{ reading.READING_TYPE }}</td>
+                      <td class="table__cell">{{ formatValue(reading.READING_VAL) }}</td>
+                      <td class="table__cell">{{ reading.REMARKS }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div v-else class="p-4">
+                <p>No MDM reads found for this customer.</p>
+              </div>
+            </div>
+
+            <!-- Error Display -->
+            <div v-if="result.error" class="alert alert--danger">
+              <strong>Error:</strong> {{ result.error }}
+            </div>
+
+            <!-- Replacement Information -->
+            <div v-if="result.replacementInfo" class="replacement-info">
+              <h5>Meter Replacement Information</h5>
+              <div class="replacement-grid">
+                <div class="replacement-item">
+                  <span class="replacement-label">Old Meter:</span>
+                  <span class="replacement-value">{{ result.replacementInfo.oldMeterNumber }}</span>
+                </div>
+                <div class="replacement-item">
+                  <span class="replacement-label">New Meter:</span>
+                  <span class="replacement-value">{{ result.replacementInfo.newMeterNumber }}</span>
+                </div>
+                <div class="replacement-item">
+                  <span class="replacement-label">Install Date:</span>
+                  <span class="replacement-value">{{ formatDate(result.replacementInfo.installDate) }}</span>
+                </div>
+                <div class="replacement-item">
+                  <span class="replacement-label">Replace Date:</span>
+                  <span class="replacement-value">{{ formatDate(result.replacementInfo.replaceDate) }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bill Stop Issues Summary -->
+            <div v-if="result.billStopIssues && result.billStopIssues.length > 0" class="issues-summary">
+              <h5>Bill Stop Issues Detected</h5>
+              <div class="issues-list">
+                <div v-for="(issue, issueIndex) in result.billStopIssues" :key="issueIndex" class="issue-item">
+                  <div class="issue-header">
+                    <strong>{{ issue.meterType }} ({{ issue.meterNo }}):</strong>
+                    <span class="issue-stats">
+                      {{ issue.missingReadings }} issues found
+                    </span>
+                  </div>
+                  <div class="issue-details">
+                    <div v-for="(detail, detailIndex) in issue.issues" :key="detailIndex" class="issue-detail">
+                      <div class="issue-detail__header">
+                        <span class="badge" :class="getSeverityBadgeClass(detail.severity)">
+                          {{ detail.severity }}
+                        </span>
+                        <span class="issue-detail__type">{{ detail.type }}</span>
+                      </div>
+                      <div class="issue-detail__description">
+                        {{ detail.description }}
+                      </div>
+                      <div v-if="detail.date" class="issue-detail__date">
+                        Date: {{ formatDate(detail.date) }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Analysis Details -->
+            <div class="analysis-details">
+              <!-- Old Meter Analysis -->
+              <div v-if="result.oldMeterAnalysis" class="analysis-section">
+                <h6 class="analysis-section__title">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 6v6l4 2"/>
+                  </svg>
+                  Old Meter Analysis ({{ result.oldMeterAnalysis.meterNo }})
+                </h6>
+                <div v-if="result.oldMeterStatus" class="analysis-status">
+                  Status: {{ result.oldMeterStatus }} - {{ result.oldMeterReason }}
+                </div>
+                <div v-if="result.oldMeterAnalysis.monthlyReadings.length > 0" class="readings-table">
+                  <table class="table">
+                    <thead class="table__header">
+                      <tr class="table__row">
+                        <th class="table__cell table__cell--header">Date</th>
+                        <th class="table__cell table__cell--header">Reading Type</th>
+                        <th class="table__cell table__cell--header">Value</th>
+                        <th class="table__cell table__cell--header">Source</th>
+                        <th class="table__cell table__cell--header">Remark</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="reading in result.oldMeterAnalysis.monthlyReadings" :key="reading.date" 
+                          class="table__row" :class="getReadingRowClass(reading.source)">
+                        <td class="table__cell">{{ formatDate(reading.date) }}</td>
+                        <td class="table__cell">{{ reading.readingType }}</td>
+                        <td class="table__cell">{{ formatValue(reading.value) }}</td>
+                        <td class="table__cell">
+                          <span class="badge" :class="getSourceBadgeClass(reading.source)">
+                            {{ reading.source }}
+                          </span>
+                        </td>
+                        <td class="table__cell">{{ reading.remark }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- New Meter Analysis -->
+              <div v-if="result.newMeterAnalysis" class="analysis-section">
+                <h6 class="analysis-section__title">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                  </svg>
+                  New Meter Analysis ({{ result.newMeterAnalysis.meterNo }})
+                </h6>
+                <div v-if="result.newMeterAnalysis.monthlyReadings.length > 0" class="readings-table">
+                  <table class="table">
+                    <thead class="table__header">
+                      <tr class="table__row">
+                        <th class="table__cell table__cell--header">Date</th>
+                        <th class="table__cell table__cell--header">Reading Type</th>
+                        <th class="table__cell table__cell--header">Value</th>
+                        <th class="table__cell table__cell--header">Source</th>
+                        <th class="table__cell table__cell--header">Remark</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="reading in result.newMeterAnalysis.monthlyReadings" :key="reading.date"
+                          class="table__row" :class="getReadingRowClass(reading.source)">
+                        <td class="table__cell">{{ formatDate(reading.date) }}</td>
+                        <td class="table__cell">{{ reading.readingType }}</td>
+                        <td class="table__cell">{{ formatValue(reading.value) }}</td>
+                        <td class="table__cell">
+                          <span class="badge" :class="getSourceBadgeClass(reading.source)">
+                            {{ reading.source }}
+                          </span>
+                        </td>
+                        <td class="table__cell">{{ reading.remark }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Current Meter Analysis -->
+              <div v-if="result.currentMeterAnalysis" class="analysis-section">
+                <h6 class="analysis-section__title">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                  </svg>
+                  Current Meter Analysis ({{ result.currentMeterAnalysis.meterNo }})
+                </h6>
+                <div v-if="result.analysisPeriod" class="analysis-period-info">
+                  <strong>Analysis Period:</strong> {{ result.analysisPeriod === 'LAST_BILL_TO_CURRENT' ? 'From Last Bill Date to Current Month' : 'From Next Month of Installation to Current Month' }}
+                  <br>
+                  <strong>Start Date:</strong> {{ formatDate(result.analysisStartDate) }}
+                </div>
+                <div v-if="result.currentMeterAnalysis.monthlyReadings.length > 0" class="readings-table">
+                  <table class="table">
+                    <thead class="table__header">
+                      <tr class="table__row">
+                        <th class="table__cell table__cell--header">Date</th>
+                        <th class="table__cell table__cell--header">Reading Type</th>
+                        <th class="table__cell table__cell--header">Value</th>
+                        <th class="table__cell table__cell--header">Source</th>
+                        <th class="table__cell table__cell--header">Remark</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="reading in result.currentMeterAnalysis.monthlyReadings" :key="reading.date"
+                          class="table__row" :class="getReadingRowClass(reading.source)">
+                        <td class="table__cell">{{ formatDate(reading.date) }}</td>
+                        <td class="table__cell">{{ reading.readingType }}</td>
+                        <td class="table__cell">{{ formatValue(reading.value) }}</td>
+                        <td class="table__cell">
+                          <span class="badge" :class="getSourceBadgeClass(reading.source)">
+                            {{ reading.source }}
+                          </span>
+                        </td>
+                        <td class="table__cell">{{ reading.remark }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Analysis Modal -->
+    <div v-if="isAiModalOpen" class="ai-modal-overlay" @click.self="isAiModalOpen = false">
+      <div class="ai-modal">
+        <div class="ai-modal-header">
+          <div class="ai-modal-title">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+            </svg>
+            <h3>AI Analysis & Resolution</h3>
+          </div>
+          <button @click="isAiModalOpen = false" class="ai-modal-close-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="ai-modal-body">
+          <div v-if="isAnalyzingWithAi" class="ai-modal-loader">
+            <div class="colorful-loader"></div>
+            <p>Analyzing with Gemini, please wait...</p>
+          </div>
+          <div v-if="!isAnalyzingWithAi && aiAnalysisResult" class="ai-analysis-content">
+            <div class="analysis-section">
+              <h4 class="analysis-title">Root Cause</h4>
+              <p class="analysis-text">{{ aiAnalysisResult.rootCause }}</p>
+            </div>
+            <div class="analysis-section">
+              <h4 class="analysis-title">Resolution Plan</h4>
+              <ol class="resolution-plan">
+                <li v-for="(step, index) in aiAnalysisResult.resolutionPlan.split('\n')" :key="index" class="resolution-step">{{ step.replace(/^\d+\.\s*/, '') }}</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, reactive } from 'vue';
+import apiClient from '../api';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
+const file = ref<File | null>(null);
+const message = ref('');
+const messageClass = ref('');
+const analysisResults = ref<any[]>([]);
+const isAnalyzing = ref(false);
+const isGenerating = ref(false);
+const isDownloading = ref(false);
+
+const reportSummary = ref<any | null>(null);
+
+const individualAnalysis = reactive({
+  customerNum: '',
+  meterNo: ''
+});
+
+interface AiAnalysisResult {
+  rootCause: string;
+  resolutionPlan: string;
+}
+
+const isAiModalOpen = ref(false);
+const aiAnalysisResult = ref<AiAnalysisResult | null>(null);
+const isAnalyzingWithAi = ref(false);
+
+const analyzeWithAi = async (customerNum: string) => {
+  isAnalyzingWithAi.value = true;
+  isAiModalOpen.value = true;
+  aiAnalysisResult.value = null;
+
+  try {
+    const response = await apiClient.post(`/bill-stop-analysis/analyze/${customerNum}`);
+    aiAnalysisResult.value = response.data;
+  } catch (error) {
+    console.error('Error analyzing with AI:', error);
+    aiAnalysisResult.value = {
+      rootCause: 'Error',
+      resolutionPlan: 'Could not get analysis from the server.'
+    };
+  } finally {
+    isAnalyzingWithAi.value = false;
+  }
+};
+
+const handleFileUpload = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  if (target.files) {
+    file.value = target.files[0];
+  }
+};
+
+const uploadAndAnalyze = async () => {
+  if (!file.value) {
+    message.value = 'Please select a file to upload.';
+    messageClass.value = 'alert--danger';
+    return;
+  }
+
+  isAnalyzing.value = true;
+  message.value = '';
+  messageClass.value = '';
+
+  const formData = new FormData();
+  formData.append('file', file.value);
+
+  try {
+    const response = await apiClient.post('/bill-stop/upload-and-analyze', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    analysisResults.value = response.data;
+    message.value = `Analysis complete. Processed ${response.data.length} customers.`;
+    messageClass.value = 'alert--success';
+  } catch (error: any) {
+    message.value = error.response?.data || 'An error occurred during analysis.';
+    messageClass.value = 'alert--danger';
+    analysisResults.value = [];
+  } finally {
+    isAnalyzing.value = false;
+  }
+};
+
+const analyzeIndividualCustomer = async () => {
+  if (!individualAnalysis.customerNum || !individualAnalysis.meterNo) {
+    message.value = 'Please provide customer number and meter number.';
+    messageClass.value = 'alert--danger';
+    return;
+  }
+
+  isAnalyzing.value = true;
+  message.value = '';
+  messageClass.value = '';
+
+  try {
+    const params = new URLSearchParams({
+      customerNum: individualAnalysis.customerNum,
+      meterNo: individualAnalysis.meterNo
+    });
+
+    const response = await apiClient.get(`/bill-stop/analyze?${params}`);
+    analysisResults.value = [response.data];
+    message.value = 'Individual customer analysis complete.';
+    messageClass.value = 'alert--success';
+  } catch (error: any) {
+    message.value = error.response?.data || 'An error occurred during analysis.';
+    messageClass.value = 'alert--danger';
+    analysisResults.value = [];
+  } finally {
+    isAnalyzing.value = false;
+  }
+};
+
+const generateReport = async () => {
+  try {
+    isGenerating.value = true;
+    const { data } = await apiClient.get('/bill-stop/report');
+    reportSummary.value = data;
+    message.value = 'Report generated';
+    messageClass.value = 'alert--success';
+  } catch (e: any) {
+    message.value = e.response?.data?.error || 'Failed to generate report';
+    messageClass.value = 'alert--danger';
+  } finally {
+    isGenerating.value = false;
+  }
+};
+
+
+
+const downloadBillStopList = async () => {
+  try {
+    isDownloading.value = true;
+    const { data } = await apiClient.get('/bill-stop/customers');
+    const rows = data.customers || [];
+    if (!rows.length) {
+      alert('No bill stop customers found.');
+      return;
+    }
+    const exportRows = rows.map((r: any) => ({
+     
+      CUSTOMER_NUM: r.CUSTOMER_NUM,
+      METER_NO: r.METER_NO,
+      CONN_DATE: r.CONN_DATE ? new Date(r.CONN_DATE).toISOString().split('T')[0] : '',
+      TARIFF: r.TARIFF,
+      LAST_BILL_DATE: r.LAST_BILL_DATE ? new Date(r.LAST_BILL_DATE).toISOString().split('T')[0] : '',
+      HAS_CURRENT_MONTH_READ: r.hasCurrentMonthRead ? 'Yes' : 'No',
+      COVERAGE: r.coverage,
+      INSTALLED_THIS_MONTH_NO_BILL: r.installedThisMonthNoBill ? 'Yes' : 'No',
+    }));
+    const ws = XLSX.utils.json_to_sheet(exportRows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'BillStopCustomers');
+    XLSX.writeFile(wb, `bill_stop_customers_${new Date().toISOString().slice(0,10)}.xlsx`);
+  } catch (e: any) {
+    alert(e.response?.data?.error || 'Failed to download list');
+  } finally {
+    isDownloading.value = false;
+  }
+};
+
+const formatDate = (date: string | Date) => {
+  if (!date) return 'N/A';
+  return new Date(date).toLocaleDateString();
+};
+
+const formatValue = (value: number) => {
+  if (value == null) return 'N/A';
+  return value.toFixed(2);
+};
+
+const getStatusClass = (status: string) => {
+  switch (status) {
+    case 'ANALYZED': return 'result-card__header--success';
+    case 'ERROR': return 'result-card__header--error';
+    case 'BILL_START': return 'result-card__header--info';
+    default: return 'result-card__header--default';
+  }
+};
+
+const getStatusBadgeClass = (status: string) => {
+  switch (status) {
+    case 'ANALYZED': return 'badge--success';
+    case 'ERROR': return 'badge--danger';
+    case 'BILL_START': return 'badge--info';
+    default: return 'badge--secondary';
+  }
+};
+
+const getSourceBadgeClass = (source: string) => {
+  switch (source) {
+    case 'MDM_READS': return 'badge--primary';
+    case 'BILLING_PROFILE': return 'badge--info';
+    case 'MISSING': return 'badge--danger';
+    default: return 'badge--secondary';
+  }
+};
+
+const getReadingRowClass = (source: string) => {
+  switch (source) {
+    case 'MISSING': return 'table__row--danger';
+    default: return '';
+  }
+};
+
+const getSeverityBadgeClass = (severity: string) => {
+  switch (severity) {
+    case 'HIGH': return 'badge--danger';
+    case 'MEDIUM': return 'badge--warning';
+    case 'LOW': return 'badge--info';
+    default: return 'badge--secondary';
+  }
+};
+
+const exportResults = () => {
+  const csvContent = generateCSV(analysisResults.value);
+  const blob = new Blob([csvContent], { type: 'text/csv' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `bill-stop-analysis-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  window.URL.revokeObjectURL(url);
+};
+
+const downloadExcel = (result: any) => {
+  let data = [];
+  if (result.status === 'BILL_START') {
+    data = result.mdmReads;
+  } else if (result.currentMeterAnalysis) {
+    data = result.currentMeterAnalysis.monthlyReadings;
+  } else if (result.oldMeterAnalysis || result.newMeterAnalysis) {
+    if(result.oldMeterAnalysis) data.push(...result.oldMeterAnalysis.monthlyReadings);
+    if(result.newMeterAnalysis) data.push(...result.newMeterAnalysis.monthlyReadings);
+  }
+
+  if(data.length === 0) {
+    alert('No data available to download.');
+    return;
+  }
+
+  const worksheet = XLSX.utils.json_to_sheet(data);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Analysis');
+  XLSX.writeFile(workbook, `bill_stop_analysis_${result.customerNumber}.xlsx`);
+};
+
+const downloadPdf = (result: any) => {
+  let data: any[] = [];
+  let head: any[] = [];
+  if (result.status === 'BILL_START') {
+    head = [['Date', 'Reading Type', 'Value', 'Remark']];
+    data = result.mdmReads.map((r: any) => [formatDate(r.MSRMT_DTTM), r.READING_TYPE, formatValue(r.READING_VAL), r.REMARKS]);
+  } else if (result.currentMeterAnalysis || result.oldMeterAnalysis || result.newMeterAnalysis) {
+    head = [['Date', 'Reading Type', 'Value', 'Source', 'Remark']];
+    let readings: any[] = [];
+    if (result.currentMeterAnalysis) {
+        readings = result.currentMeterAnalysis.monthlyReadings;
+    } else {
+        if(result.oldMeterAnalysis) readings.push(...result.oldMeterAnalysis.monthlyReadings);
+        if(result.newMeterAnalysis) readings.push(...result.newMeterAnalysis.monthlyReadings);
+    }
+    data = readings.map((r: any) => [formatDate(r.date), r.readingType, formatValue(r.value), r.source, r.remark]);
+  }
+
+  if(data.length === 0) {
+    alert('No data available to download.');
+    return;
+  }
+
+  const doc = new jsPDF();
+  autoTable(doc, {
+    head: head,
+    body: data,
+  });
+  doc.save(`bill_stop_analysis_${result.customerNumber}.pdf`);
+};
+
+const generateCSV = (results: any[]) => {
+  const headers = [
+    'Customer Number',
+    'Meter Number',
+    'Tariff',
+    'Last Bill Date',
+    'Analysis Period',
+    'Status',
+    'Bill Stop Issues',
+    'Missing Readings',
+    'Initial Read Missing',
+    'MDM Missing Billing Available',
+    'TOD Readings Missing'
+  ];
+
+  const rows = results.map(result => {
+    const billStopIssues = result.billStopIssues || [];
+    const initialReadMissing = billStopIssues.some((issue: any) => 
+      issue.issues?.some((detail: any) => detail.type === 'INITIAL_READ_MISSING')
+    ) ? 'Yes' : 'No';
+    
+    const mdmMissingBillingAvailable = billStopIssues.some((issue: any) => 
+      issue.issues?.some((detail: any) => detail.type === 'MDM_MISSING_BILLING_AVAILABLE')
+    ) ? 'Yes' : 'No';
+    
+    const todReadingsMissing = billStopIssues.some((issue: any) => 
+      issue.issues?.some((detail: any) => detail.type === 'TOD_READING_MISSING')
+    ) ? 'Yes' : 'No';
+
+    return [
+      result.customerNumber,
+      result.meterNumber,
+      result.tariff || '',
+      result.lastBillDate || '',
+      result.analysisPeriod || 'N/A',
+      result.status,
+      billStopIssues.length,
+      billStopIssues.reduce((sum: number, issue: any) => sum + issue.missingReadings, 0),
+      initialReadMissing,
+      mdmMissingBillingAvailable,
+      todReadingsMissing
+    ];
+  });
+
+  return [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+};
+</script>
+
+<style scoped>
+/* General Styles */
+.bill-stop-view {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: var(--spacing-xl);
+  background-color: var(--color-background);
+}
+/* Summary Cards */
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+}
+.summary-card {
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.summary-card.total { background: linear-gradient(135deg, #f3e8ff, #e9d5ff); }
+.summary-card.success { background: linear-gradient(135deg, #dcfce7, #bbf7d0); }
+.summary-card.warn { background: linear-gradient(135deg, #fff7ed, #ffedd5); }
+.summary-card.info { background: linear-gradient(135deg, #e0f2fe, #bae6fd); }
+.summary-card.danger { background: linear-gradient(135deg, #fee2e2, #fecaca); }
+.summary-card__title { font-size: 14px; color: #374151; margin-bottom: 6px; }
+.summary-card__value { font-size: 28px; font-weight: 800; color: #111827; }
+
+/* Page Header */
+.page-header {
+  background: linear-gradient(135deg, #6B73FF, #00F2FE);
+  color: white;
+  padding: var(--spacing-2xl);
+  border-radius: var(--radius-2xl);
+  margin-bottom: var(--spacing-2xl);
+  box-shadow: 0 10px 30px -15px rgba(0, 0, 0, 0.2);
+}
+
+.page-header__title {
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-black);
+  margin-bottom: var(--spacing-sm);
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+}
+
+.page-header__subtitle {
+  font-size: var(--font-size-lg);
+  opacity: 0.9;
+}
+
+/* Analysis Methods */
+.analysis-methods__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+  gap: var(--spacing-xl);
+}
+
+.analysis-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border: 1px solid var(--color-border);
+}
+
+.analysis-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-xl);
+}
+
+.analysis-card .card__header {
+  background: var(--color-surface-soft);
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--spacing-lg);
+}
+
+.analysis-card .card__title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.analysis-card .card__title svg {
+  color: var(--primary-500);
+}
+
+/* Forms */
+.upload-form, .individual-form {
+  padding: var(--spacing-lg);
+}
+
+.form-group {
+  margin-bottom: var(--spacing-lg);
+}
+
+.form-label {
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--spacing-sm);
+  display: block;
+}
+
+.form-control, .file-upload {
+  transition: all var(--transition-fast);
+}
+
+.form-control:focus, .file-upload:focus-within {
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px var(--primary-100);
+}
+
+/* Buttons */
+.btn {
+  transition: all 0.3s ease;
+}
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px -5px rgba(0,0,0,0.2);
+}
+
+/* Results Section */
+.results-header {
+  padding: var(--spacing-lg) 0;
+}
+
+.results-title {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+}
+
+.results-stats {
+  background: var(--color-surface-soft);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-lg);
+}
+
+/* Result Cards */
+.result-card {
+  margin-bottom: var(--spacing-xl);
+}
+
+.result-card__header {
+  color: white;
+  border-top-left-radius: var(--radius-xl);
+  border-top-right-radius: var(--radius-xl);
+}
+
+.result-card__header--success {
+  background: linear-gradient(135deg, #28a745, #218838);
+}
+
+.result-card__header--error {
+  background: linear-gradient(135deg, #dc3545, #c82333);
+}
+
+.result-card__header--info {
+  background: linear-gradient(135deg, #17a2b8, #138496);
+}
+
+.result-card__header--default {
+  background: linear-gradient(135deg, #6c757d, #5a6268);
+}
+
+.result-card__title h4 {
+  font-weight: var(--font-weight-bold);
+}
+
+/* Tables */
+.readings-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.table th, .table td {
+  padding: var(--spacing-md);
+  text-align: left;
+}
+
+.table thead {
+  background-color: var(--color-surface-soft);
+}
+
+.table th {
+  font-weight: var(--font-weight-semibold);
+}
+
+.table tbody tr:nth-child(even) {
+  background-color: var(--color-surface-soft);
+}
+
+.table tbody tr:hover {
+  background-color: var(--color-surface-hover);
+}
+
+/* Badges */
+.badge {
+  font-weight: var(--font-weight-bold);
+  text-shadow: none;
+}
+
+.badge--primary {
+  background-color: #007bff;
+  color: white;
+}
+
+.badge--info {
+  background-color: #17a2b8;
+  color: white;
+}
+
+.badge--success {
+  background-color: #28a745;
+  color: white;
+}
+
+.badge--warning {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.badge--danger {
+  background-color: #dc3545;
+  color: white;
+}
+
+.badge--secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+/* Other styles from original file */
+.bill-stop-view {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Page Header */
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-2xl);
+  padding-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.page-header__title {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.page-header__subtitle {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+/* Analysis Methods */
+.analysis-methods {
+  margin-bottom: var(--spacing-2xl);
+}
+
+.analysis-methods__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: var(--spacing-xl);
+}
+
+.analysis-card {
+  height: fit-content;
+}
+
+.analysis-card .card__title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* Forms */
+.upload-form,
+.individual-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-lg);
+}
+
+.file-upload {
+  position: relative;
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  text-align: center;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.file-upload:hover {
+  border-color: var(--color-border-hover);
+  background: var(--color-surface-hover);
+}
+
+.file-upload__input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.file-upload__display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--color-text-secondary);
+}
+
+.file-upload__display svg {
+  color: var(--primary-600);
+}
+
+/* Alerts */
+.alert {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.alert__content {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* Results Section */
+.results-section {
+  margin-top: var(--spacing-2xl);
+}
+
+.results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-xl);
+  padding-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.results-title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.results-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.results-count {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.results-stats {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.stat__label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+}
+
+.stat__value {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.results-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+/* Result Cards */
+.result-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  background: var(--card-bg);
+  box-shadow: var(--shadow-md);
+}
+
+.result-card__header {
+  padding: var(--spacing-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.result-card__header--success {
+  background: var(--success-50);
+  border-bottom-color: var(--success-200);
+}
+
+.result-card__header--error {
+  background: var(--danger-50);
+  border-bottom-color: var(--danger-200);
+}
+
+.result-card__header--info {
+  background: var(--primary-50);
+  border-bottom-color: var(--primary-200);
+}
+
+.result-card__header--default {
+  background: var(--color-background-secondary);
+}
+
+.result-card__title h4 {
+  margin: 0 0 var(--spacing-xs) 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+}
+
+.result-card__title p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.result-card__content {
+  padding: var(--spacing-lg);
+}
+
+/* Replacement Info */
+.replacement-info {
+  background: var(--primary-50);
+  border: 1px solid var(--primary-200);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+.replacement-info h5 {
+  margin: 0 0 var(--spacing-md) 0;
+  color: var(--primary-800);
+  font-weight: var(--font-weight-semibold);
+}
+
+.replacement-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.replacement-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.replacement-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+  font-weight: var(--font-weight-medium);
+}
+
+.replacement-value {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+/* Issues Summary */
+.issues-summary {
+  background: var(--warning-50);
+  border: 1px solid var(--warning-200);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+.issues-summary h5 {
+  margin: 0 0 var(--spacing-md) 0;
+  color: var(--warning-800);
+  font-weight: var(--font-weight-semibold);
+}
+
+.issues-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.issue-item {
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+}
+
+.issue-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+}
+
+.issue-stats {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+}
+
+.issue-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-md);
+}
+
+.issue-detail {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+}
+
+.issue-detail__header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.issue-detail__type {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.issue-detail__description {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+  margin-bottom: var(--spacing-xs);
+}
+
+.issue-detail__date {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  font-weight: var(--font-weight-medium);
+}
+
+.analysis-period-info {
+  background: var(--primary-50);
+  border: 1px solid var(--primary-200);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  font-size: var(--font-size-sm);
+  color: var(--primary-800);
+}
+
+/* Analysis Details */
+.analysis-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+.analysis-section {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.analysis-section__title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin: 0;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--color-background-secondary);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.analysis-status {
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--color-background-tertiary);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.readings-table {
+  overflow-x: auto;
+}
+
+/* Table Enhancements */
+.table__row--warning {
+  background: var(--warning-50);
+}
+
+.table__row--warning:hover {
+  background: var(--warning-100);
+}
+
+/* Badge Enhancements */
+.badge--info {
+  background: var(--primary-100);
+  color: var(--primary-800);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    gap: var(--spacing-lg);
+  }
+  
+  .analysis-methods__grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .results-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+  }
+  
+  .results-summary {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+  }
+  
+  .replacement-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .issue-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-xs);
+  }
+}
+
+@media (max-width: 480px) {
+  .result-card__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+  }
+  
+  .readings-table {
+    font-size: var(--font-size-sm);
+  }
+}
+
+/* Colorful Loader */
+.colorful-loader {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-block;
+  position: relative;
+  border-top: 3px solid var(--primary-500);
+  border-right: 3px solid transparent;
+  box-sizing: border-box;
+  animation: rotation 1s linear infinite;
+}
+.colorful-loader::after {
+  content: '';
+  box-sizing: border-box;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border-bottom: 3px solid var(--secondary-500);
+  border-left: 3px solid transparent;
+}
+@keyframes rotation {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Colorful Page Header */
+.page-header {
+  background: linear-gradient(135deg, var(--primary-100), var(--secondary-100));
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-xl);
+  margin-bottom: var(--spacing-2xl);
+  border-bottom: none;
+}
+
+[data-theme="dark"] .page-header {
+    background: linear-gradient(135deg, var(--primary-800), var(--secondary-800));
+}
+
+/* Colorful Analysis Cards */
+.analysis-card {
+  border-left: 5px solid var(--primary-500);
+}
+
+[data-theme="dark"] .analysis-card {
+  border-left-color: var(--primary-300);
+}
+
+.analysis-card .card__title svg {
+  color: var(--primary-500);
+}
+
+[data-theme="dark"] .analysis-card .card__title svg {
+  color: var(--primary-300);
+}
+
+/* Colorful Results */
+.result-card__header--success {
+  background: linear-gradient(135deg, var(--success-100), var(--success-200));
+  color: var(--success-900);
+}
+
+.result-card__header--error {
+  background: linear-gradient(135deg, var(--danger-100), var(--danger-200));
+  color: var(--danger-900);
+}
+
+[data-theme="dark"] .result-card__header--success {
+    background: linear-gradient(135deg, var(--success-800), var(--success-700));
+    color: var(--color-text-primary);
+}
+
+[data-theme="dark"] .result-card__header--error {
+    background: linear-gradient(135deg, var(--danger-800), var(--danger-700));
+    color: var(--color-text-primary);
+}
+
+/* AI Modal Styles */
+.ai-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1050;
+  backdrop-filter: blur(5px);
+}
+
+.ai-modal {
+  background-color: white;
+  color: black;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-2xl);
+  width: 90%;
+  max-width: 650px;
+  border: 1px solid #ccc;
+  animation: slide-down 0.3s ease-out;
+}
+
+@keyframes slide-down {
+  from {
+    transform: translateY(-30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.ai-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-lg) var(--spacing-xl);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ai-modal-title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  color: black;
+}
+
+.ai-modal-title h3 {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: black;
+}
+
+.ai-modal-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: black;
+  transition: color 0.2s;
+}
+
+.ai-modal-close-btn:hover {
+  color: #333;
+}
+
+.ai-modal-body {
+  padding: var(--spacing-xl);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.ai-modal-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-lg);
+  min-height: 200px;
+  color: var(--color-text-secondary);
+}
+
+.ai-analysis-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+.analysis-section {
+  background: var(--color-surface-soft);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  border: 1px solid var(--color-border);
+}
+
+.analysis-title {
+  font-weight: var(--font-weight-bold);
+  margin-top: 0;
+  margin-bottom: var(--spacing-md);
+  color: black;
+  font-size: var(--font-size-lg);
+}
+
+.analysis-text {
+  color: black;
+  line-height: 1.6;
+}
+
+.resolution-plan {
+  list-style-type: decimal;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.resolution-step {
+  color: black;
+  line-height: 1.6;
+  padding-left: 5px;
+}
+</style>
