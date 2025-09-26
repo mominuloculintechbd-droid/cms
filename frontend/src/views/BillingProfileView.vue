@@ -42,7 +42,9 @@
     </div>
 
     <div v-if="singleResult" class="card mt-3">
-      <div class="card-header">Result: {{ singleResult.meter_no || singleResult.customer?.METER_NO || singleMeter }}</div>
+      <div class="card-header">Result: {{ singleResult.meter_no || singleResult.customer?.METER_NO || singleMeter }}
+        <button class="btn btn-sm btn-primary float-end" @click="downloadSingleCSV">Download CSV</button>
+      </div>
       <div class="card-body">
         <div class="result-meta">
           <div>
@@ -117,6 +119,7 @@
     </div>
 
     <div v-if="bulkResults.length" class="mt-3">
+      <button class="btn btn-primary mb-2" @click="downloadBulkCSV">Download All as CSV</button>
       <div v-for="res in bulkResults" :key="res.meter_no" class="card mb-2">
         <div class="card-header">Meter: {{ res.meter_no }}</div>
         <div class="card-body">
@@ -198,6 +201,38 @@ const loadingBulk = ref(false);
 const singleResult = ref<any | null>(null);
 const bulkResults = ref<any[]>([]);
 const auth = useAuthStore();
+
+const uomMap = {
+    'L&G': {
+        '1P': { total: 'ES-KWH-TOT-1P-DAILY', tod1: 'ES-KWH-TOD1-1P-DAILY', tod2: 'ES-KWH-TOD2-1P-DAILY' },
+        '3P': { total: 'ES-KWH-TOT-FWD-3P-DAILY', tod1: 'ES-KWH-TOD1-FWD-3P-DAILY', tod2: 'ES-KWH-TOD2-FWD-3P-DAILY' }
+    },
+    'WASION': {
+        '1P': { total: 'WS-KWH-TOT-1P-DAILY', tod1: 'WS-KWH-TOD1-1P-DAILY', tod2: 'WS-KWH-TOD2-1P-DAILY' },
+        '3P': { total: 'WS-KWH-TOT-FWD-3P-DAILY', tod1: 'WS-KWH-TOD1-FWD-3P-DAILY', tod2: 'WS-KWH-TOD2-FWD-3P-DAILY' }
+    },
+    'SHENZHEN': {
+        '1P': { total: 'ST-KWH-TOT-1P-DAILY', tod1: 'ST-KWH-TOD1-1P-DAILY', tod2: 'ST-KWH-TOD2-1P-DAILY' },
+        '3P': { total: 'ST-KWH-TOT-FWD-3P-DAILY', tod1: 'ST-KWH-TOD1-FWD-3P-DAILY', tod2: 'ST-KWH-TOD2-FWD-3P-DAILY' }
+    }
+};
+
+function getMeterPhase(meterNumber) {
+    const secondDigit = meterNumber.charAt(1);
+    return secondDigit === '0' ? '1P' : '3P';
+}
+
+function getMeterBrand(meterNumber) {
+    const prefix = meterNumber.charAt(0);
+    return prefix === '7' ? 'SHENZHEN' : 
+           prefix === '8' ? 'WASION' : 'L&G';
+}
+
+function getUOM(meterNumber, type = 'total') {
+    const brand = getMeterBrand(meterNumber);
+    const phase = getMeterPhase(meterNumber);
+    return uomMap[brand][phase][type] || 'Unknown';
+}
 
 const handleFileSelection = (event: Event) => {
   const target = event.target as HTMLInputElement;
@@ -310,6 +345,54 @@ const rowHighlightClass = (readingDate: any, coveredMonths?: string[]) => {
   if (!coveredMonths || coveredMonths.length === 0) return '';
   const label = monthLabel(readingDate);
   return coveredMonths.includes(label) ? 'row-covered' : '';
+};
+
+const downloadSingleCSV = () => {
+  if (!singleResult.value) return;
+
+  const meterNo = singleResult.value.meter_no || singleResult.value.customer?.METER_NO || singleMeter.value;
+  let csvContent = "METERNO,UOM,readdttm,read\n";
+
+  singleResult.value.readings.forEach(reading => {
+    const uom = getUOM(meterNo);
+    const date = formatDate(reading.reading_date);
+    const value = reading.value_kwh;
+    csvContent += `${meterNo},${uom},${date},${value}\n`;
+  });
+
+  downloadCSV(csvContent, `billing-profile-${meterNo}.csv`);
+};
+
+const downloadBulkCSV = () => {
+  if (bulkResults.value.length === 0) return;
+
+  let csvContent = "METERNO,UOM,readdttm,read\n";
+
+  bulkResults.value.forEach(result => {
+    const meterNo = result.meter_no || result.customer?.METER_NO;
+    if (meterNo && result.readings) {
+      result.readings.forEach(reading => {
+        const uom = getUOM(meterNo);
+        const date = formatDate(reading.reading_date);
+        const value = reading.value_kwh;
+        csvContent += `${meterNo},${uom},${date},${value}\n`;
+      });
+    }
+  });
+
+  downloadCSV(csvContent, `billing-profile-bulk.csv`);
+};
+
+const downloadCSV = (content, fileName) => {
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  link.setAttribute("href", url);
+  link.setAttribute("download", fileName);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 };
 </script>
 

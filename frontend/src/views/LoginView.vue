@@ -89,6 +89,7 @@
 import { ref } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import { useToast } from 'vue-toastification';
+import { useRouter } from 'vue-router';
 
 const email = ref('');
 const password = ref('');
@@ -97,6 +98,7 @@ const errorMessage = ref('');
 
 const authStore = useAuthStore();
 const toast = useToast();
+const router = useRouter();
 
 const handleLogin = async () => {
   if (!email.value.trim() || !password.value) {
@@ -112,7 +114,7 @@ const handleLogin = async () => {
     console.log('Attempting login with:', { email: email.value.trim() });
     await authStore.login({ email: email.value.trim(), password: password.value });
     console.log('Login successful');
-    // The store handles redirection on success
+    router.push('/dashboard');
   } catch (error: any) {
     console.error('Login error:', error);
     

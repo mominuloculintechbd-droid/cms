@@ -40,37 +40,42 @@ const props = defineProps({
 
 import type { ChartOptions } from 'chart.js';
 
-const chartOptions = computed<ChartOptions<'bar'>>(() => ({
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      labels: {
-        color: 'var(--text-primary)',
+const chartOptions = computed<ChartOptions<'bar'>>(() => {
+  const options: ChartOptions<'bar'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: {
+          color: 'var(--text-primary)',
+        },
       },
     },
-  },
-  scales: {
-    x: {
-      ticks: {
-        color: 'var(--text-secondary)',
+    scales: {
+      x: {
+        ticks: {
+          color: 'var(--text-secondary)',
+        },
+        grid: {
+          color: 'var(--color-border)',
+        },
       },
-      grid: {
-        color: 'var(--color-border)',
+      y: {
+        type: 'linear',
+        display: true,
+        position: 'left',
+        ticks: {
+          color: 'var(--text-secondary)',
+        },
+        grid: {
+          color: 'var(--color-border)',
+        },
       },
     },
-    y: {
-      type: 'linear',
-      display: true,
-      position: 'left',
-      ticks: {
-        color: 'var(--text-secondary)',
-      },
-      grid: {
-        color: 'var(--color-border)',
-      },
-    },
-    y1: props.multiAxis ? {
+  };
+
+  if (props.multiAxis) {
+    options.scales.y1 = {
       type: 'linear',
       display: true,
       position: 'right',
@@ -78,11 +83,13 @@ const chartOptions = computed<ChartOptions<'bar'>>(() => ({
         color: 'var(--text-secondary)',
       },
       grid: {
-        drawOnChartArea: false, // only draw grid lines for the first Y axis
+        drawOnChartArea: false,
       },
-    } : undefined,
-  },
-}));
+    };
+  }
+
+  return options;
+});
 </script>
 
 <style scoped>

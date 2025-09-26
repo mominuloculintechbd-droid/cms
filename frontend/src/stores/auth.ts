@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia';
 import { login as apiLogin, getMe, register as apiRegister } from '../api';
 import { createToastInterface } from 'vue-toastification';
-import router from '../router';
 
 const toast = createToastInterface();
 
@@ -69,10 +68,8 @@ export const useAuthStore = defineStore('auth', {
         console.log('Auth store: Login successful, redirecting...');
 
         // Force a router push to dashboard and replace the current history entry
-        await router.push('/dashboard');
         
         // Force reload the page to ensure proper state
-        window.location.href = '/dashboard';
       } catch (error: any) {
         console.error('Auth store: Login failed:', error);
         
@@ -97,7 +94,6 @@ export const useAuthStore = defineStore('auth', {
       this.user = null;
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      router.push('/login');
     },
 
     async fetchUser() {

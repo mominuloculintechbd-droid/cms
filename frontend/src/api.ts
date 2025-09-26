@@ -112,6 +112,11 @@ export const createUser = (userData: UserData) => {
   return apiClient.post('/users', userData);
 };
 
+// --- Customer --- //
+export const getCustomerDetails = (meterNo: string) => {
+  return apiClient.get(`/customers/details/${encodeURIComponent(meterNo)}`);
+};
+
 // --- Content --- //
 export const deleteContent = (id: number | string) => {
   return apiClient.delete(`/content/${id}`);

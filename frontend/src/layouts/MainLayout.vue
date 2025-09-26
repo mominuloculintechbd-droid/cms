@@ -123,6 +123,25 @@
                 Batch Report
               </router-link>
             </li>
+            <li class="sidebar__item" v-if="auth.isAuthenticated">
+              <router-link to="/meter-estimator" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/meter-estimator') }">
+                <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="16" rx="2" ry="2"/>
+                  <path d="M7 8h10M7 12h6M7 16h8"/>
+                </svg>
+                Meter Estimator
+              </router-link>
+            </li>
+            <li class="sidebar__item" v-if="auth.isAuthenticated">
+              <router-link to="/c2m-upload" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/c2m-upload') }">
+                <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17,8 12,3 7,8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                C2M Upload
+              </router-link>
+            </li>
             <li class="sidebar__item" v-if="auth.isAuthenticated && (auth.user?.role === 'Super Admin' || auth.user?.role === 'Admin')">
               <router-link to="/admin" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/admin') }">
                 <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

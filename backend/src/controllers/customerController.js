@@ -208,6 +208,29 @@ const getNocsReport = async (req, res) => {
   }
 };
 
+const getCustomerDetailsByMeterNo = async (req, res) => {
+  try {
+    const { meterNo } = req.params;
+    if (!meterNo) {
+      return res.status(400).send('Meter number is required.');
+    }
+
+    const customer = await Customer.findOne({
+      where: { METER_NO: meterNo },
+      attributes: ['METER_NO', 'CUSTOMER_NUM', 'CONN_DATE', 'TARIFF'],
+    });
+
+    if (!customer) {
+      return res.status(404).send('Customer not found.');
+    }
+
+    res.status(200).json(customer);
+  } catch (error) {
+    console.error('Error getting customer details by meter number:', error);
+    res.status(500).send('An error occurred while getting customer details.');
+  }
+};
+
 module.exports = {
   uploadCustomers,
   searchCustomers,
@@ -215,4 +238,5 @@ module.exports = {
   getCustomerCount,
   getMonthlyInstallations,
   getNocsReport,
+  getCustomerDetailsByMeterNo,
 };

@@ -12,6 +12,7 @@ router.get('/count', protect, customerController.getCustomerCount);
 router.get('/installations/monthly', protect, customerController.getMonthlyInstallations);
 router.get('/reports/nocs', protect, customerController.getNocsReport);
 router.delete('/', protect, customerController.deleteAllCustomers);
+router.get('/details/:meterNo', protect, customerController.getCustomerDetailsByMeterNo);
 
 
 module.exports = router;
