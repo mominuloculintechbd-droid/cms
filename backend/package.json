@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node src/app.js",
-    "dev": "NODE_ENV=development nodemon src/app.js",
+    "dev": "cross-env NODE_ENV=development nodemon src/app.js",
     "setup": "node start-server.js",
     "test-login": "node test-login.js",
     "create-admin": "node createSuperAdmin.js"
@@ -37,6 +37,7 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.10",
-    "sequelize-cli": "^6.6.3"
+    "sequelize-cli": "^6.6.3",
+    "cross-env": "^7.0.3"
   }
 }
