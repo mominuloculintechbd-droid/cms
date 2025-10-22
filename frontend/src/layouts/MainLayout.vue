@@ -5,18 +5,30 @@
       <!-- Sidebar -->
       <aside class="sidebar" :class="{ 'sidebar--closed': !isSidebarOpen }">
         <div class="sidebar__header">
-          <h6 class="sidebar__title">Oculin Tech BD Ltd</h6>
-          <!-- <p class="sidebar__subtitle">Manage your system</p> -->
+          <div class="sidebar__logo-container">
+            <svg class="sidebar__logo-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+            <h6 class="sidebar__title">OTBL CMS</h6>
+          </div>
           <div v-if="auth.isAuthenticated" class="user-info-sidebar">
-            <div class="user-name">{{ auth.user?.fullName || 'User' }}</div>
-            <div class="user-name">{{ auth.user?.designation || 'User' }}</div>
-            <div> </div>
+            <div class="user-avatar-sidebar">
+              <img v-if="auth.user?.profilePicture" :src="auth.user.profilePicture" :alt="auth.user.fullName">
+              <svg v-else viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+            </div>
+            <div class="user-details-sidebar">
+              <div class="user-name-sidebar">{{ auth.user?.fullName || 'User' }}</div>
+              <div class="user-designation-sidebar">{{ auth.user?.designation || auth.user?.role || 'User' }}</div>
+            </div>
           </div>
         </div>
         <nav class="sidebar__nav">
           <ul class="sidebar__menu">
             <li class="sidebar__item">
-              <router-link to="/dashboard" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path === '/dashboard' }">
+              <router-link to="/dashboard" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path === '/dashboard' }" @click="closeSidebarOnMobile">
                 <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
                   <polyline points="9,22 9,12 15,12 15,22"/>
@@ -26,33 +38,29 @@
             </li>
 
             <li class="sidebar__item" v-if="auth.isAuthenticated">
-              <router-link to="/tickets" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/tickets') }">
+              <router-link to="/tickets" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/tickets') }" @click="closeSidebarOnMobile">
                 <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                   <polyline points="14,2 14,8 20,8"/>
                   <line x1="16" y1="13" x2="8" y2="13"/>
                   <line x1="16" y1="17" x2="8" y2="17"/>
-                  <polyline points="10,9 9,9 8,9"/>
                 </svg>
                 Tickets
               </router-link>
             </li>
 
             <li class="sidebar__item" v-if="auth.isAuthenticated">
-              <router-link to="/content" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/content') }">
+              <router-link to="/content" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/content') }" @click="closeSidebarOnMobile">
                 <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14,2 14,8 20,8"/>
-                  <line x1="16" y1="13" x2="8" y2="13"/>
-                  <line x1="16" y1="17" x2="8" y2="17"/>
-                  <polyline points="10,9 9,9 8,9"/>
+                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                  <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
                 </svg>
                 Content
               </router-link>
             </li>
 
             <li class="sidebar__item" v-if="auth.isAuthenticated">
-              <router-link to="/customers" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/customers') }">
+              <router-link to="/customers" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/customers') }" @click="closeSidebarOnMobile">
                 <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
                   <circle cx="9" cy="7" r="4"/>
@@ -64,7 +72,18 @@
             </li>
 
             <li class="sidebar__item" v-if="auth.isAuthenticated">
-              <router-link to="/billing-profile" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/billing-profile') }">
+              <router-link to="/complaints" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/complaints') }" @click="closeSidebarOnMobile">
+                <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                Complaints
+              </router-link>
+            </li>
+
+            <li class="sidebar__item" v-if="auth.isAuthenticated">
+              <router-link to="/billing-profile" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/billing-profile') }" @click="closeSidebarOnMobile">
                 <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
                   <line x1="1" y1="10" x2="23" y2="10"/>
@@ -73,30 +92,19 @@
               </router-link>
             </li>
 
-            <li class="sidebar__item" v-if="auth.isAuthenticated">
-              <router-link to="/data-upload" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/data-upload') }">
+            <li class="sidebar__item" v-if="auth.isAuthenticated && auth.canManageUsers">
+              <router-link to="/data-upload" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/data-upload') }" @click="closeSidebarOnMobile">
                 <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="7,10 12,15 17,10"/>
-                  <line x1="12" y1="15" x2="12" y2="3"/>
+                  <polyline points="17,8 12,3 7,8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
                 </svg>
                 Data Upload
               </router-link>
             </li>
 
             <li class="sidebar__item" v-if="auth.isAuthenticated">
-              <router-link to="/data-fetching" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/data-fetching') }">
-                <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="17,8 12,3 7,8"/>
-                  <line x1="12" y1="3" x2="12" y2="15"/>
-                </svg>
-                Data Fetching
-              </router-link>
-            </li>
-
-            <li class="sidebar__item" v-if="auth.isAuthenticated">
-              <router-link to="/bill-stop" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/bill-stop') }">
+              <router-link to="/bill-stop" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/bill-stop') }" @click="closeSidebarOnMobile">
                 <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <circle cx="12" cy="12" r="10"/>
                   <line x1="15" y1="9" x2="9" y2="15"/>
@@ -105,53 +113,64 @@
                 Bill Stop
               </router-link>
             </li>
+
             <li class="sidebar__item" v-if="auth.isAuthenticated">
-              <router-link to="/meter-replacement" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/meter-replacement') }">
+              <router-link to="/meter-replacement" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/meter-replacement') }" @click="closeSidebarOnMobile">
                 <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="3" y="4" width="18" height="16" rx="2" ry="2"/>
-                  <path d="M7 8h10M7 12h6M7 16h8"/>
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m6.24 6.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m6.24-6.24l4.24-4.24"/>
                 </svg>
                 Meter Replacement
               </router-link>
             </li>
+
             <li class="sidebar__item" v-if="auth.isAuthenticated">
-              <router-link to="/batch-report" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/batch-report') }">
+              <router-link to="/batch-report" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/batch-report') }" @click="closeSidebarOnMobile">
                 <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="3" y="4" width="18" height="16" rx="2" ry="2"/>
-                  <path d="M7 8h10M7 12h6M7 16h8"/>
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14,2 14,8 20,8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                  <polyline points="10,9 9,9 8,9"/>
                 </svg>
                 Batch Report
               </router-link>
             </li>
+
             <li class="sidebar__item" v-if="auth.isAuthenticated">
-              <router-link to="/meter-estimator" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/meter-estimator') }">
+              <router-link to="/meter-estimator" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/meter-estimator') }" @click="closeSidebarOnMobile">
                 <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="3" y="4" width="18" height="16" rx="2" ry="2"/>
-                  <path d="M7 8h10M7 12h6M7 16h8"/>
+                  <line x1="12" y1="1" x2="12" y2="23"/>
+                  <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
                 </svg>
                 Meter Estimator
               </router-link>
             </li>
+
             <li class="sidebar__item" v-if="auth.isAuthenticated">
-              <router-link to="/c2m-upload" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/c2m-upload') }">
+              <router-link to="/c2m-upload" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/c2m-upload') }" @click="closeSidebarOnMobile">
                 <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="17,8 12,3 7,8"/>
-                  <line x1="12" y1="3" x2="12" y2="15"/>
+                  <polyline points="7,10 12,15 17,10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
                 </svg>
                 C2M Upload
               </router-link>
             </li>
+
+            <li class="sidebar__item sidebar__item--divider" v-if="auth.isAuthenticated && (auth.user?.role === 'Super Admin' || auth.user?.role === 'Admin')"></li>
+
             <li class="sidebar__item" v-if="auth.isAuthenticated && (auth.user?.role === 'Super Admin' || auth.user?.role === 'Admin')">
-              <router-link to="/admin" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/admin') }">
+              <router-link to="/admin" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/admin') }" @click="closeSidebarOnMobile">
                 <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                 </svg>
                 Admin Panel
               </router-link>
             </li>
+
             <li class="sidebar__item" v-if="auth.isAuthenticated && (auth.user?.role === 'Super Admin' || auth.user?.role === 'Admin')">
-              <router-link to="/users/create" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/users/create') }">
+              <router-link to="/users/create" class="sidebar__link" :class="{ 'sidebar__link--active': $route.path.startsWith('/users/create') }" @click="closeSidebarOnMobile">
                 <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
                   <circle cx="9" cy="7" r="4"/>
@@ -161,7 +180,9 @@
                 Create User
               </router-link>
             </li>
+
             <li class="sidebar__item sidebar__item--divider"></li>
+
             <li class="sidebar__item sidebar__item--logout" v-if="auth.isAuthenticated">
               <button class="sidebar__link" @click="logout">
                 <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -180,68 +201,68 @@
       <div class="main-content-area">
         <!-- Top Navbar -->
         <nav class="navbar" :class="{ 'navbar--sidebar-open': isSidebarOpen }">
-          <div class="navbar__container" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-            <!-- Left Section -->
-            <div class="navbar__left" style="display: flex; align-items: center;">
-              <router-link to="/" class="navbar__brand" style="display: flex; align-items: center; gap: 8px;">
-                <div class="navbar__logo">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-                  </svg>
-                </div>
-                <span>OTBL CMS</span>
-              </router-link>
-            </div>
+          <div class="navbar__container">
+            <!-- Left Section - Toggle Button -->
+            <button class="navbar__toggle" @click="toggleSidebar" aria-label="Toggle sidebar">
+              <svg v-if="!isSidebarOpen" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <line x1="3" y1="12" x2="21" y2="12"/>
+                <line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+              <svg v-else width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
 
-            <!-- Center Section -->
-            <div class="navbar__center" style="flex: 1; display: flex; justify-content: center;">
-              <div class="navbar__search" style="display: flex; align-items: center; max-width: 320px; width: 100%;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="11" cy="11" r="8"/>
-                  <path d="M21 21l-4.35-4.35"/>
+            <!-- Center Section - Brand (on mobile) -->
+            <router-link to="/" class="navbar__brand">
+              <div class="navbar__logo">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
                 </svg>
-                <input type="text" placeholder="Search..." class="navbar__search-input" style="flex: 1; margin-left: 8px;">
               </div>
-            </div>
+              <span class="navbar__brand-text">OTBL CMS</span>
+            </router-link>
 
             <!-- Right Section -->
-            <div class="navbar__right" style="display: flex; align-items: center; gap: 16px;">
+            <div class="navbar__right">
               <!-- Theme Toggle -->
-              <ThemeToggle v-model="theme" />
+              <ThemeToggle v-model="theme" class="navbar__theme-toggle" />
 
               <!-- Notifications -->
-              <div class="notifications" v-if="auth.isAuthenticated" style="position: relative;">
-                <button class="btn btn--ghost notification-btn" @click="goToNotifications">
+              <div class="navbar__notifications" v-if="auth.isAuthenticated">
+                <button class="navbar__icon-btn" @click="goToNotifications" aria-label="Notifications">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                     <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
                   </svg>
-                  <span v-if="unreadNotifications > 0" class="notification-badge">{{ unreadNotifications }}</span>
+                  <span v-if="unreadNotifications > 0" class="navbar__badge">{{ unreadNotifications }}</span>
                 </button>
               </div>
 
               <!-- User Menu -->
-              <div class="user-menu" ref="userMenu" v-if="auth.isAuthenticated" style="position: relative;">
-                <button class="btn btn--ghost user-menu__trigger" @click="toggleUserMenu">
-                  <div class="user-avatar">
+              <div class="navbar__user-menu" ref="userMenu" v-if="auth.isAuthenticated">
+                <button class="navbar__user-btn" @click="toggleUserMenu">
+                  <div class="navbar__user-avatar">
                     <img v-if="auth.user?.profilePicture" :src="auth.user.profilePicture" :alt="auth.user.fullName">
                     <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                       <circle cx="12" cy="7" r="4"/>
                     </svg>
                   </div>
-                  <span>{{ auth.user?.fullName || 'User' }}</span>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="6,9 12,15 18,9"></polyline>
+                  <span class="navbar__user-name">{{ auth.user?.fullName || 'User' }}</span>
+                  <svg class="navbar__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6,9 12,15 18,9"/>
                   </svg>
                 </button>
-                
-                <div class="user-menu__dropdown" v-show="isUserMenuOpen" style="z-index: 2000;">
+
+                <div class="user-menu__dropdown" v-show="isUserMenuOpen">
                   <div class="user-menu__header">
                     <div class="user-info">
                       <div class="user-avatar">
                         <img v-if="auth.user?.profilePicture" :src="auth.user.profilePicture" :alt="auth.user.fullName">
-                        <svg v-else width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <svg v-else width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
                           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                           <circle cx="12" cy="7" r="4"/>
                         </svg>
@@ -249,21 +270,21 @@
                       <div>
                         <div class="user-name">{{ auth.user?.fullName || 'User' }}</div>
                         <div class="user-email">{{ auth.user?.email || 'user@example.com' }}</div>
-                        <div class="user-role">{{ auth.user?.role || 'User' }}</div>
+                        <div class="user-role-badge">{{ auth.user?.role || 'User' }}</div>
                       </div>
                     </div>
                   </div>
-                  
+
                   <div class="user-menu__items">
                     <router-link to="/profile" class="user-menu__item" @click="closeUserMenu">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="12" cy="7" r="4"></circle>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
                       </svg>
-                      <span>Profile</span>
+                      <span>My Profile</span>
                     </router-link>
-                    <button class="user-menu__item" @click="logout">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button class="user-menu__item user-menu__item--danger" @click="logout">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                         <polyline points="16,17 21,12 16,7"/>
                         <line x1="21" y1="12" x2="9" y2="12"/>
@@ -274,14 +295,15 @@
                 </div>
               </div>
 
-              <!-- Auth Links -->
-              <div v-else class="auth-links" style="display: flex; gap: 8px;">
-                <router-link to="/login" class="btn btn--outline">Login</router-link>
-                <router-link to="/register" class="btn btn--primary">Register</router-link>
+              <!-- Auth Links (Not Authenticated) -->
+              <div v-else class="navbar__auth-links">
+                <router-link to="/login" class="navbar__auth-btn navbar__auth-btn--login">Login</router-link>
+                <router-link to="/register" class="navbar__auth-btn navbar__auth-btn--register">Register</router-link>
               </div>
             </div>
           </div>
         </nav>
+
         <!-- Main Content -->
         <main class="main-content">
           <div class="container">
@@ -290,30 +312,18 @@
         </main>
       </div>
     </div>
+
     <!-- Overlay for mobile sidebar -->
-    <div 
-      v-if="isSidebarOpen" 
-      class="sidebar-overlay" 
+    <div
+      v-if="isSidebarOpen && isMobile"
+      class="sidebar-overlay"
       @click="closeSidebar"
-    ></div>
-    <!-- Sidebar Toggle Button -->
-    <button
-      class="btn btn--ghost sidebar-toggle-external"
-      :class="{ 'sidebar-open': isSidebarOpen }"
-      @click="toggleSidebar"
-      aria-label="Toggle sidebar"
-    >
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="3" y1="6" x2="21" y2="6"></line>
-        <line x1="3" y1="12" x2="21" y2="12"></line>
-        <line x1="3" y1="18" x2="21" y2="18"></line>
-      </svg>
-    </button>
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import { useRouter } from 'vue-router';
 import api from '../api';
@@ -323,15 +333,18 @@ import ThemeToggle from '../components/ThemeToggle.vue';
 const theme = ref<'light' | 'dark'>('light');
 const isSidebarOpen = ref(true);
 const isUserMenuOpen = ref(false);
-const isNotificationOpen = ref(false);
 const userMenu = ref<HTMLElement | null>(null);
+const windowWidth = ref(window.innerWidth);
 
 // Notifications
 const unreadNotifications = ref(0);
 
-// Store and router - initialize immediately
+// Store and router
 const router = useRouter();
 const auth = useAuthStore();
+
+// Computed
+const isMobile = computed(() => windowWidth.value < 768);
 
 // Theme management
 const applyTheme = (newTheme: 'light' | 'dark') => {
@@ -360,12 +373,17 @@ const toggleSidebar = () => {
 };
 
 const closeSidebar = () => {
-  if (window.innerWidth < 768) {
-    isSidebarOpen.value = false;
+  isSidebarOpen.value = false;
+};
+
+const closeSidebarOnMobile = () => {
+  if (isMobile.value) {
+    closeSidebar();
   }
 };
 
 const handleResize = () => {
+  windowWidth.value = window.innerWidth;
   if (window.innerWidth >= 768) {
     isSidebarOpen.value = true;
   } else {
@@ -376,7 +394,6 @@ const handleResize = () => {
 // User menu management
 const toggleUserMenu = () => {
   isUserMenuOpen.value = !isUserMenuOpen.value;
-  isNotificationOpen.value = false; // Close notifications when opening user menu
 };
 
 const closeUserMenu = () => {
@@ -389,13 +406,6 @@ const handleClickOutsideUserMenu = (event: MouseEvent) => {
   }
 };
 
-const handleClickOutsideNotifications = (event: MouseEvent) => {
-  const notificationElement = document.querySelector('.notifications');
-  if (notificationElement && !notificationElement.contains(event.target as Node)) {
-    isNotificationOpen.value = false;
-  }
-};
-
 // Notification management
 const goToNotifications = () => {
   router.push('/notifications');
@@ -404,18 +414,18 @@ const goToNotifications = () => {
 const loadUnreadCount = async () => {
   if (!auth.isAuthenticated) return;
   try {
-    const res = await api.get('/notifications', { headers: { Authorization: `Bearer ${auth.token}` } });
+    const res = await api.get('/notifications');
     unreadNotifications.value = (res.data || []).filter((n: any) => !n.isRead).length;
-  } catch {}
+  } catch {
+    // Silently fail
+  }
 };
 
 // Auth management
 const logout = () => {
-  if (auth && router) {
-    auth.logout();
-    router.push('/login');
-    isUserMenuOpen.value = false;
-  }
+  auth.logout();
+  router.push('/login');
+  isUserMenuOpen.value = false;
 };
 
 // Lifecycle hooks
@@ -425,37 +435,60 @@ onMounted(() => {
   loadUnreadCount();
   window.addEventListener('resize', handleResize);
   document.addEventListener('click', handleClickOutsideUserMenu);
-  document.addEventListener('click', handleClickOutsideNotifications);
 });
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize);
   document.removeEventListener('click', handleClickOutsideUserMenu);
-  document.removeEventListener('click', handleClickOutsideNotifications);
 });
 </script>
 
 <style>
-/* Global styles */
+/* ========== CSS Variables ========== */
 :root {
-  --color-background: #f9fafb;
-  --color-text: #111827;
-  --color-text-secondary: #6b7280;
-  --color-background-soft: #f3f4f6;
-  --color-border: #e5e7eb;
+  --color-background: #f8fafc;
+  --color-surface: #ffffff;
+  --color-text: #0f172a;
+  --color-text-secondary: #64748b;
+  --color-border: #e2e8f0;
+  --color-primary: #4f46e5;
+  --color-primary-hover: #4338ca;
+  --color-primary-light: #eef2ff;
+  --color-accent: #06b6d4;
+  --color-success: #10b981;
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+  --sidebar-width: 280px;
+  --navbar-height: 64px;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
 }
 
 [data-theme='dark'] {
-  --color-background: #111827;
-  --color-text: #f9fafb;
-  --color-text-secondary: #9ca3af;
-  --color-background-soft: #1f2937;
-  --color-border: #374151;
+  --color-background: #0f172a;
+  --color-surface: #1e293b;
+  --color-text: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-border: #334155;
+  --color-primary: #6366f1;
+  --color-primary-hover: #4f46e5;
+  --color-primary-light: #1e1b4b;
+}
+
+/* ========== Global Styles ========== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   background-color: var(--color-background);
   color: var(--color-text);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .main-layout-root {
@@ -465,107 +498,125 @@ body {
 
 .main-layout-grid {
   display: flex;
-  flex-direction: row;
   min-height: 100vh;
-  width: 100%;
 }
 
+/* ========== Sidebar Styles ========== */
 .sidebar {
-  width: 260px;
-  min-width: 220px;
-  max-width: 320px;
-  background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
-  color: #fff;
-  box-shadow: 2px 0 12px 0 rgba(0,0,0,0.07);
-  transition: width 0.2s, left 0.2s;
-  z-index: 100;
+  width: var(--sidebar-width);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+  box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
-  position: relative;
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1000;
+}
+
+.sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .sidebar--closed {
-  width: 0;
-  min-width: 0;
-  overflow: hidden;
-  padding: 0 !important;
-}
-
-.main-content-area {
-  flex: 1 1 0%;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  background: var(--color-background);
-  transition: margin-left 0.2s;
-}
-
-.navbar {
-  background: linear-gradient(90deg, #06b6d4 0%, #4f46e5 100%);
-  color: #fff;
-  box-shadow: 0 2px 8px 0 rgba(0,0,0,0.04);
-  padding: 0.5rem 2rem;
-  min-height: 56px;
-  display: flex;
-  align-items: center;
-  z-index: 101;
-}
-
-.main-content {
-  flex: 1 1 0%;
-  padding: 2rem 1.5rem;
-  background: transparent;
-  min-width: 0;
-}
-
-@media (max-width: 900px) {
-  .main-layout-grid {
-    flex-direction: column;
-  }
-  .sidebar {
-    width: 100vw;
-    min-width: 0;
-    max-width: 100vw;
-    position: absolute;
-    left: 0;
-    top: 0;
-    height: 100vh;
-    z-index: 200;
-    box-shadow: 2px 0 12px 0 rgba(0,0,0,0.12);
-  }
-  .sidebar--closed {
-    left: -100vw;
-    width: 0;
-    min-width: 0;
-    box-shadow: none;
-  }
-  .main-content-area {
-    margin-left: 0;
-  }
+  transform: translateX(-100%);
 }
 
 .sidebar__header {
-  padding: 2rem 1.5rem 1rem 1.5rem;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar__logo-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.sidebar__logo-icon {
+  width: 32px;
+  height: 32px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
 }
 
 .sidebar__title {
   font-size: 1.5rem;
   font-weight: 700;
-  margin-bottom: 0.25rem;
-  color: #fff;
+  margin: 0;
+  letter-spacing: -0.025em;
 }
 
-.sidebar__subtitle {
-  font-size: 1rem;
-  color: #e0e7ff;
-  margin-bottom: 1rem;
+.user-info-sidebar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  backdrop-filter: blur(10px);
+}
+
+.user-avatar-sidebar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.user-avatar-sidebar img,
+.user-avatar-sidebar svg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-details-sidebar {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-name-sidebar {
+  font-weight: 600;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-designation-sidebar {
+  font-size: 0.75rem;
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sidebar__nav {
-  flex: 1 1 0%;
+  flex: 1;
   padding: 1rem 0;
-  overflow-y: auto;
 }
 
 .sidebar__menu {
@@ -575,303 +626,449 @@ body {
 }
 
 .sidebar__item {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
 }
 
 .sidebar__link {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.75rem 2rem;
-  color: #e0e7ff;
+  padding: 0.75rem 1.5rem;
+  color: rgba(255, 255, 255, 0.8);
   text-decoration: none;
-  border-radius: 0 2rem 2rem 0;
   font-weight: 500;
-  transition: background 0.15s, color 0.15s;
+  font-size: 0.9375rem;
+  transition: all 0.2s ease;
+  border-left: 3px solid transparent;
   background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
 }
 
-.sidebar__link--active,
 .sidebar__link:hover {
-  background: rgba(255,255,255,0.12);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border-left-color: rgba(255, 255, 255, 0.5);
+}
+
+.sidebar__link--active {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  border-left-color: #ffffff;
+  font-weight: 600;
 }
 
 .sidebar__icon {
-  width: 1.25em;
-  height: 1.25em;
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
 }
 
-.sidebar-overlay {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.25);
-  z-index: 150;
-  display: block;
-}
-
-.sidebar-toggle-external {
-  position: fixed;
-  top: 1rem;
-  left: 1rem;
-  z-index: 300;
-  background: #fff;
-  color: #4f46e5;
-  border-radius: 50%;
-  box-shadow: 0 2px 8px 0 rgba(0,0,0,0.08);
-  width: 44px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.sidebar-toggle-external.sidebar-open {
-  background: #4f46e5;
-  color: #fff;
-}
-
-/* Notifications */
-.notifications {
-  position: relative;
-  margin-right: 1rem;
-}
-
-.notification-btn {
-  position: relative;
-  padding: 0.5rem;
-  border-radius: 0.5rem;
-  transition: all 0.2s;
-}
-
-.notification-btn:hover {
+.sidebar__item--divider {
+  height: 1px;
+  margin: 0.75rem 1.5rem;
   background: rgba(255, 255, 255, 0.1);
 }
 
-.notification-badge {
-  position: absolute;
-  top: -0.25rem;
-  right: -0.25rem;
-  background: #dc2626;
-  color: white;
-  border-radius: 50%;
-  width: 1.25rem;
-  height: 1.25rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid white;
+.sidebar__item--logout .sidebar__link {
+  color: #fecaca;
 }
 
-.notification-dropdown {
-  position: absolute;
-  top: calc(100% + 0.5rem);
-  right: 0;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.75rem;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  width: 350px;
-  max-height: 400px;
-  z-index: 9999;
-  overflow: hidden;
-  display: block;
+.sidebar__item--logout .sidebar__link:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border-left-color: #fca5a5;
 }
 
-.notification-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f8fafc;
-}
-
-.notification-header h4 {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.notification-list {
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.no-notifications {
+/* ========== Main Content Area ========== */
+.main-content-area {
+  flex: 1;
+  margin-left: var(--sidebar-width);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  color: var(--color-text-secondary);
-  text-align: center;
+  min-height: 100vh;
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.no-notifications svg {
-  width: 3rem;
-  height: 3rem;
-  margin-bottom: 1rem;
-  opacity: 0.5;
+.sidebar--closed ~ .main-content-area {
+  margin-left: 0;
 }
 
-.notification-item {
+/* ========== Navbar Styles ========== */
+.navbar {
+  height: var(--navbar-height);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+[data-theme='dark'] .navbar {
+  background: rgba(30, 41, 59, 0.9);
+}
+
+.navbar__container {
+  height: 100%;
+  padding: 0 1.5rem;
   display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 1rem;
-  border-bottom: 1px solid #f3f4f6;
-  cursor: pointer;
-  transition: background 0.2s;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 100%;
 }
 
-.notification-item:hover {
-  background: #f8fafc;
-}
-
-.notification-item.unread {
-  background: #eff6ff;
-  border-left: 3px solid #3b82f6;
-}
-
-.notification-icon {
-  width: 2rem;
-  height: 2rem;
+.navbar__toggle {
+  width: 40px;
+  height: 40px;
   border-radius: 0.5rem;
-  background: #f3f4f6;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  transition: all 0.2s ease;
 }
 
-.notification-icon svg {
-  width: 1rem;
-  height: 1rem;
-  color: #6b7280;
+.navbar__toggle:hover {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
 }
 
-.notification-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.notification-content h5 {
-  margin: 0 0 0.25rem 0;
-  font-size: 0.875rem;
-  font-weight: 600;
+.navbar__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
   color: var(--color-text);
+  font-weight: 700;
+  font-size: 1.125rem;
 }
 
-.notification-content p {
-  margin: 0 0 0.5rem 0;
-  font-size: 0.875rem;
+.navbar__logo {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.navbar__brand-text {
+  display: none;
+}
+
+.navbar__right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.navbar__theme-toggle {
+  margin-right: 0.5rem;
+}
+
+.navbar__icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 0.5rem;
+  border: none;
+  background: transparent;
   color: var(--color-text-secondary);
-  line-height: 1.4;
-}
-
-.notification-time {
-  font-size: 0.75rem;
-  color: #9ca3af;
-}
-
-.user-menu {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   position: relative;
-  display: inline-block;
+  transition: all 0.2s ease;
+}
+
+.navbar__icon-btn:hover {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.navbar__badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: var(--color-danger);
+  color: white;
+  border-radius: 999px;
+  min-width: 18px;
+  height: 18px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  box-shadow: 0 0 0 2px var(--color-surface);
+}
+
+.navbar__user-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.5rem;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.navbar__user-btn:hover {
+  background: var(--color-primary-light);
+}
+
+.navbar__user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: var(--color-primary);
+}
+
+.navbar__user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.navbar__user-name {
+  display: none;
+}
+
+.navbar__chevron {
+  color: var(--color-text-secondary);
+}
+
+.navbar__auth-links {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.navbar__auth-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.navbar__auth-btn--login {
+  color: var(--color-text);
+  background: transparent;
+  border: 1px solid var(--color-border);
+}
+
+.navbar__auth-btn--login:hover {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.navbar__auth-btn--register {
+  color: white;
+  background: var(--color-primary);
+}
+
+.navbar__auth-btn--register:hover {
+  background: var(--color-primary-hover);
+}
+
+/* ========== User Menu Dropdown ========== */
+.navbar__user-menu {
+  position: relative;
 }
 
 .user-menu__dropdown {
   position: absolute;
-  top: calc(100% + 0.5rem);
+  top: calc(100% + 0.75rem);
   right: 0;
-  background-color: white;
-  border: 1px solid #e5e7eb;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 0.75rem;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-xl);
   width: 280px;
   z-index: 9999;
-  padding: 0.5rem;
-  display: block;
+  overflow: hidden;
 }
 
 .user-menu__header {
-  padding: 0.5rem 1rem 1rem;
+  padding: 1rem;
   border-bottom: 1px solid var(--color-border);
-  margin-bottom: 0.5rem;
+  background: var(--color-background);
 }
 
 .user-info {
   display: flex;
-  align-items: center;
   gap: 0.75rem;
 }
 
-.user-name {
-  font-weight: 600;
-}
-
-.user-email,
-.user-role {
-  font-size: 0.875rem;
-  color: var(--color-text-secondary);
-}
-
-.user-menu__item {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 1rem;
-    width: 100%;
-    text-align: left;
-    background: none;
-    border: none;
-    border-radius: 0.25rem;
-    color: var(--color-text);
-    cursor: pointer;
-    font-size: 1rem;
-    text-decoration: none;
-}
-
-.user-menu__item:hover {
-    background-color: var(--color-background-soft);
-}
-
-.user-menu__item svg {
-    width: 16px;
-    height: 16px;
+.user-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--color-primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: var(--color-primary);
+  flex-shrink: 0;
 }
 
 .user-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 50%;
 }
 
-.sidebar__item--divider {
-  height: 1px;
-  margin: 1rem 2rem;
-  background-color: rgba(255, 255, 255, 0.1);
+.user-name {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--color-text);
+  margin-bottom: 0.25rem;
 }
 
-.sidebar__item--logout .sidebar__link {
-  background-color: rgba(255, 255, 255, 0.1);
-  font-weight: bold;
+.user-email {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.5rem;
 }
 
-@media (min-width: 900px) {
-  .sidebar-toggle-external {
-    display: none;
+.user-role-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.user-menu__items {
+  padding: 0.5rem;
+}
+
+.user-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: 0.5rem;
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.user-menu__item:hover {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.user-menu__item--danger {
+  color: var(--color-danger);
+}
+
+.user-menu__item--danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--color-danger);
+}
+
+/* ========== Main Content ========== */
+.main-content {
+  flex: 1;
+  padding: 2rem 1rem;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ========== Overlay ========== */
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  backdrop-filter: blur(2px);
+}
+
+/* ========== Responsive Design ========== */
+@media (min-width: 640px) {
+  .navbar__brand-text {
+    display: inline;
   }
+
+  .navbar__user-name {
+    display: inline;
+  }
+}
+
+@media (min-width: 768px) {
   .sidebar-overlay {
-    display: none;
+    display: none !important;
+  }
+
+  .main-content {
+    padding: 2rem;
+  }
+
+  .navbar__toggle {
+    display: flex;
+  }
+}
+
+@media (max-width: 767px) {
+  .sidebar {
+    position: fixed;
+    z-index: 1000;
+  }
+
+  .main-content-area {
+    margin-left: 0 !important;
+  }
+
+  .navbar__user-btn {
+    padding: 0.375rem;
+  }
+
+  .navbar__container {
+    padding: 0 1rem;
   }
 }
 </style>

@@ -72,7 +72,7 @@
     <!-- Action Bar -->
     <div class="action-bar">
       <div class="action-group">
-        <button class="btn btn-primary" @click="showCreateUserModal = true">
+        <button class="btn btn-primary" @click="openCreateUserModal">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
             <circle cx="9" cy="7" r="4"/>
@@ -122,24 +122,23 @@
     <!-- Users Table -->
     <div class="table-section">
       <div class="table-header">
-        <h3>User Management</h3>
-        <div class="table-actions">
-          <span class="results-count">{{ filteredUsers.length }} of {{ users.length }} users</span>
+        <div>
+          <h3>User Management</h3>
+          <p class="results-count">{{ filteredUsers.length }} users found</p>
         </div>
       </div>
-      
       <div class="table-container">
         <table class="users-table">
-        <thead>
-          <tr>
+          <thead>
+            <tr>
               <th>User</th>
-            <th>Role</th>
-            <th>Status</th>
+              <th>Role</th>
+              <th>Status</th>
               <th>Last Login</th>
               <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
+            </tr>
+          </thead>
+          <tbody>
             <tr v-if="loading" class="loading-row">
               <td colspan="5" class="text-center">
                 <div class="loading-spinner">
@@ -150,85 +149,177 @@
                 <p>Loading users...</p>
               </td>
             </tr>
-            <tr v-else-if="filteredUsers.length === 0" class="no-data-row">
+            <tr v-else-if="paginatedUsers.length === 0" class="no-data-row">
               <td colspan="5" class="text-center">
                 <svg class="no-data-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="11" cy="11" r="8"/>
-                  <path d="M21 21l-4.35-4.35"/>
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
                 </svg>
                 <p>No users found</p>
               </td>
             </tr>
             <tr v-else v-for="user in paginatedUsers" :key="user.id" class="user-row">
-              <td class="user-info">
-                <div class="user-avatar">
-                  <img v-if="user.profilePicture" :src="user.profilePicture" :alt="user.fullName">
-                  <svg v-else viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                    <circle cx="12" cy="7" r="4"/>
-                  </svg>
-                </div>
-                <div class="user-details">
-                  <h4>{{ user.fullName }}</h4>
-                  <p>{{ user.email }}</p>
+              <td>
+                <div class="user-info">
+                  <div class="user-avatar">
+                    <img v-if="user.profilePicture" :src="user.profilePicture" :alt="user.fullName">
+                    <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                      <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                  </div>
+                  <div class="user-details">
+                    <h4>{{ user.fullName }}</h4>
+                    <p>{{ user.email }}</p>
+                  </div>
                 </div>
               </td>
-              <td class="role-cell">
-                <select v-if="canEdit(user)" class="role-select" @change="handleRoleChange(user, $event)">
-                <option v-for="role in roles" :key="role" :value="role" :selected="user.role === role">
-                  {{ role }}
-                </option>
-              </select>
-                <span v-else class="role-badge" :class="getRoleClass(user.role)">
+              <td>
+                <span class="role-badge" :class="getRoleClass(user.role)">
                   {{ user.role }}
                 </span>
-            </td>
-              <td class="status-cell">
-                <button v-if="canEdit(user)" @click="toggleStatus(user)" class="status-btn" :class="getStatusClass(user.status)">
-                {{ user.status }}
-              </button>
+              </td>
+              <td>
+                <button
+                  v-if="canEdit(user)"
+                  @click="toggleStatus(user)"
+                  class="status-btn"
+                  :class="getStatusClass(user.status)"
+                >
+                  {{ user.status }}
+                </button>
                 <span v-else class="status-badge" :class="getStatusClass(user.status)">
                   {{ user.status }}
                 </span>
               </td>
-              <td class="last-login">
-                {{ formatDate(user.lastLogin) }}
-            </td>
+              <td class="last-login">{{ formatDate(user.lastLogin) }}</td>
               <td class="actions-cell">
                 <div class="action-buttons">
-                  <button v-if="canEdit(user)" @click="editUser(user)" class="btn btn-sm btn-outline">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                    </svg>
+                  <button
+                    v-if="canEdit(user)"
+                    @click="editUser(user)"
+                    class="btn btn-sm btn-outline"
+                  >
+                    Edit
                   </button>
-                  <button v-if="canEdit(user)" @click="handleDeleteUser(user.id)" class="btn btn-sm btn-danger">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <polyline points="3,6 5,6 21,6"/>
-                      <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"/>
-                    </svg>
-              </button>
+                  <button
+                    v-if="canEdit(user)"
+                    @click="handleDeleteUser(user.id)"
+                    class="btn btn-sm btn-danger"
+                  >
+                    Delete
+                  </button>
                 </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-      
+
       <!-- Pagination -->
-      <div v-if="totalPages > 1" class="pagination">
-        <button class="btn btn-outline" @click="goToPage(currentPage - 1)" :disabled="currentPage === 1">
+      <div class="pagination" v-if="totalPages > 1">
+        <button
+          class="btn btn-outline"
+          @click="goToPage(currentPage - 1)"
+          :disabled="currentPage === 1"
+        >
           Previous
         </button>
         <span class="page-info">Page {{ currentPage }} of {{ totalPages }}</span>
-        <button class="btn btn-outline" @click="goToPage(currentPage + 1)" :disabled="currentPage === totalPages">
+        <button
+          class="btn btn-outline"
+          @click="goToPage(currentPage + 1)"
+          :disabled="currentPage === totalPages"
+        >
           Next
         </button>
       </div>
     </div>
 
-    <!-- Create User Modal -->
-    <div v-if="showCreateUserModal" class="modal-overlay" @click="closeModal">
+    <!-- Complaint Category Management -->
+    <div class="table-section mt-8">
+      <div class="table-header">
+        <h3>Complaint Category Management</h3>
+        <div class="table-actions">
+          <button class="btn btn-primary" @click="openCategoryModal">Add Category</button>
+        </div>
+      </div>
+      <div class="table-container">
+        <table class="users-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="category in complaintCategories" :key="category.id">
+              <td>{{ category.name }}</td>
+              <td class="actions-cell">
+                <div class="action-buttons">
+                  <button @click="editCategory(category)" class="btn btn-sm btn-outline">Edit</button>
+                  <button @click="deleteCategory(category.id)" class="btn btn-sm btn-danger">Delete</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Create/Edit Category Modal -->
+  <Teleport to="body">
+    <div
+      v-if="showCategoryModal"
+      class="modal-overlay"
+      @click="closeCategoryModal"
+      :style="{
+        position: 'fixed',
+        top: '0',
+        left: '0',
+        width: '100vw',
+        height: '100vh',
+        zIndex: '10000'
+      }"
+    >
+      <div class="modal" @click.stop>
+        <div class="modal-header">
+          <h3>{{ editingCategory ? 'Edit' : 'Add' }} Category</h3>
+          <button class="btn btn-ghost" @click="closeCategoryModal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <form @submit.prevent="saveCategory">
+            <div class="form-group">
+              <label>Category Name</label>
+              <input type="text" class="form-control" v-model="categoryForm.name" required>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" @click="closeCategoryModal">Cancel</button>
+          <button class="btn btn-primary" @click="saveCategory">Save</button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
+  <!-- Create User Modal -->
+  <Teleport to="body">
+    <div
+      v-if="showCreateUserModal"
+      class="modal-overlay"
+      @click="closeModal"
+      :style="{
+        position: 'fixed',
+        top: '0',
+        left: '0',
+        width: '100vw',
+        height: '100vh',
+        zIndex: '10000'
+      }"
+    >
       <div class="modal" @click.stop>
         <div class="modal-header">
           <h3>Create New User</h3>
@@ -269,9 +360,23 @@
         </div>
       </div>
     </div>
+  </Teleport>
 
-    <!-- Edit User Modal -->
-    <div v-if="showEditUserModal" class="modal-overlay" @click="closeEditModal">
+  <!-- Edit User Modal -->
+  <Teleport to="body">
+    <div
+      v-if="showEditUserModal"
+      class="modal-overlay"
+      @click="closeEditModal"
+      :style="{
+        position: 'fixed',
+        top: '0',
+        left: '0',
+        width: '100vw',
+        height: '100vh',
+        zIndex: '10000'
+      }"
+    >
       <div class="modal" @click.stop>
         <div class="modal-header">
           <h3>Edit User</h3>
@@ -308,13 +413,78 @@
         </div>
       </div>
     </div>
-  </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
+import api from '@/api';
 import { getUsers, updateUser, deleteUser, createUser, type UserData } from '../api';
 import { useAuthStore } from '../stores/auth';
+
+// Complaint Categories
+interface ComplaintCategory {
+  id: number;
+  name: string;
+}
+
+const complaintCategories = ref<ComplaintCategory[]>([]);
+const showCategoryModal = ref(false);
+const editingCategory = ref<ComplaintCategory | null>(null);
+const categoryForm = ref({ name: '' });
+
+const fetchComplaintCategories = async () => {
+  try {
+    const response = await api.get('/complaint-categories');
+    complaintCategories.value = response.data;
+  } catch (error) {
+    console.error('Failed to fetch complaint categories', error);
+  }
+};
+
+const openCategoryModal = () => {
+  console.log('Opening category modal');
+  showCategoryModal.value = true;
+};
+
+const closeCategoryModal = () => {
+  console.log('Closing category modal');
+  showCategoryModal.value = false;
+  editingCategory.value = null;
+  categoryForm.value = { name: '' };
+};
+
+const editCategory = (category: ComplaintCategory) => {
+  editingCategory.value = category;
+  categoryForm.value.name = category.name;
+  showCategoryModal.value = true;
+};
+
+const saveCategory = async () => {
+  try {
+    if (editingCategory.value) {
+      await api.put(`/complaint-categories/${editingCategory.value.id}`, categoryForm.value);
+    } else {
+      await api.post('/complaint-categories', categoryForm.value);
+    }
+    fetchComplaintCategories();
+    closeCategoryModal();
+  } catch (error) {
+    console.error('Failed to save category', error);
+  }
+};
+
+const deleteCategory = async (id: number) => {
+  if (confirm('Are you sure you want to delete this category?')) {
+    try {
+      await api.delete(`/complaint-categories/${id}`);
+      fetchComplaintCategories();
+    } catch (error) {
+      console.error('Failed to delete category', error);
+    }
+  }
+};
+
 
 const auth = useAuthStore();
 const users = ref<User[]>([]);
@@ -391,16 +561,25 @@ const fetchUsers = async () => {
   try {
     const response = await getUsers();
     users.value = response.data;
-    
+
     // Update statistics
     stats.value.totalUsers = users.value.length;
     stats.value.activeUsers = users.value.filter(u => u.status === 'active').length;
-    stats.value.totalTickets = Math.floor(Math.random() * 1000) + 500; // Mock data
   } catch (err: any) {
     error.value = err.message;
     console.error(`Error fetching users:`, err);
   } finally {
     loading.value = false;
+  }
+};
+
+const fetchTicketStats = async () => {
+  try {
+    const response = await api.get('/tickets');
+    stats.value.totalTickets = response.data.length || 0;
+  } catch (err: any) {
+    console.error('Error fetching ticket stats:', err);
+    stats.value.totalTickets = 0;
   }
 };
 
@@ -463,6 +642,8 @@ const goToPage = (page: number) => {
 
 const refreshData = () => {
   fetchUsers();
+  fetchTicketStats();
+  fetchComplaintCategories();
 };
 
 const exportUsers = () => {
@@ -533,7 +714,13 @@ const editUser = (user: User) => {
   openEditModal(user);
 };
 
+const openCreateUserModal = () => {
+  console.log('Opening create user modal');
+  showCreateUserModal.value = true;
+};
+
 const closeModal = () => {
+  console.log('Closing create user modal');
   showCreateUserModal.value = false;
   newUser.value = {
     fullName: '',
@@ -576,6 +763,49 @@ const formatDate = (dateString: string | undefined) => {
 
 onMounted(async () => {
   await fetchUsers();
+  await fetchComplaintCategories();
+  await fetchTicketStats();
+});
+
+// Debug watchers
+watch(showCreateUserModal, (newVal) => {
+  console.log('showCreateUserModal changed to:', newVal);
+  if (newVal) {
+    // Check if modal element exists in DOM
+    setTimeout(() => {
+      const modalOverlay = document.querySelector('.modal-overlay');
+      console.log('Modal overlay element found:', !!modalOverlay);
+      if (modalOverlay) {
+        const computedStyle = window.getComputedStyle(modalOverlay);
+        const rect = modalOverlay.getBoundingClientRect();
+        console.log('=== Modal CSS Properties ===');
+        console.log('Display:', computedStyle.display);
+        console.log('Z-index:', computedStyle.zIndex);
+        console.log('Position:', computedStyle.position);
+        console.log('Opacity:', computedStyle.opacity);
+        console.log('Visibility:', computedStyle.visibility);
+        console.log('Top:', computedStyle.top);
+        console.log('Left:', computedStyle.left);
+        console.log('Right:', computedStyle.right);
+        console.log('Bottom:', computedStyle.bottom);
+        console.log('Width:', computedStyle.width);
+        console.log('Height:', computedStyle.height);
+        console.log('=== Bounding Rect ===');
+        console.log('Rect:', rect);
+        console.log('Is in viewport:', rect.top >= 0 && rect.left >= 0);
+      } else {
+        console.error('Modal overlay not found in DOM!');
+      }
+    }, 100);
+  }
+});
+
+watch(showCategoryModal, (newVal) => {
+  console.log('showCategoryModal changed to:', newVal);
+});
+
+watch(showEditUserModal, (newVal) => {
+  console.log('showEditUserModal changed to:', newVal);
 });
 </script>
 
@@ -978,16 +1208,29 @@ onMounted(async () => {
 
 /* Modal */
 .modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  min-height: 100vh !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(4px);
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 10000 !important;
+  animation: fadeIn 0.2s ease-out;
+  overflow-y: auto;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .modal {
@@ -998,6 +1241,18 @@ onMounted(async () => {
   max-height: 90vh;
   overflow: hidden;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .modal-header {
@@ -1131,6 +1386,20 @@ onMounted(async () => {
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Utility Classes */
+.mt-8 {
+  margin-top: 2rem;
+}
+
+.actions-cell {
+  white-space: nowrap;
+}
+
+.table-actions {
+  display: flex;
+  gap: 0.5rem;
 }
 
 /* Responsive Design */

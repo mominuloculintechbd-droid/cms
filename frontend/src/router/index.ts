@@ -25,10 +25,21 @@ const router = createRouter({
         { path: '', name: 'home', component: () => import('../views/HomeView.vue') },
         { path: 'dashboard', name: 'dashboard', component: () => import('../views/DashboardView.vue') },
         { path: 'sop', name: 'sop', component: () => import('../views/SopView.vue') },
-        { path: 'profile', name: 'profile', component: () => import('../views/ProfileView.vue') },
+        {
+          path: '/customer-support-center',
+          name: 'customer-support-center',
+          component: () => import('../views/CustomerSupportCenterView.vue'),
+          meta: { requiresAuth: true, roles: ['Admin', 'Agent'] } // Example roles
+        },
+        {
+          path: '/profile',
+          name: 'profile',
+          component: () => import('../views/ProfileView.vue'),
+          meta: { requiresAuth: true }
+        },
         { path: 'settings', name: 'settings', component: () => import('../views/SettingsView.vue'), meta: { roles: ['Super Admin', 'Admin', 'Manager'] } },
         { path: 'admin', name: 'admin-dashboard', component: () => import('../views/AdminPageView.vue'), meta: { roles: ['Super Admin', 'Admin'] } },
-        { path: 'manager', name: 'manager-dashboard', component: () => import('../views/ManagerPageView.vue'), meta: { roles: ['Manager'] } },
+        { path: 'manager', name: 'manager-dashboard', component: () => import('../views/ManagerPageView.vue'), meta: { roles: ['Manager','Super Admin', 'Admin'] } },
         { path: 'tickets', name: 'ticket-list', component: () => import('../views/TicketListView.vue') },
         { path: 'tickets/board', name: 'ticket-board', component: () => import('../views/TicketBoardView.vue') },
         { path: 'tickets/create', name: 'ticket-create', component: () => import('../views/TicketCreateView.vue') },
@@ -46,7 +57,10 @@ const router = createRouter({
         { path: 'meter-replacement', name: 'meter-replacement', component: () => import('../views/MeterReplacementView.vue'), meta: { roles: ['Super Admin', 'Admin', 'Manager'] } },
         { path: 'batch-report', name: 'batch-operational-report', component: () => import('../views/BatchOperationalReportView.vue'), meta: { roles: ['Super Admin', 'Admin', 'Manager'] } },
         { path: 'meter-estimator', name: 'meter-estimator', component: () => import('../views/MeterEstimatorView.vue'), meta: { roles: ['Super Admin', 'Admin', 'Manager'] } },
-        { path: 'c2m-upload', name: 'c2m-upload', component: () => import('../views/C2MUploadView.vue'), meta: { roles: ['Super Admin', 'Admin', 'Manager'] } }
+        { path: 'c2m-upload', name: 'c2m-upload', component: () => import('../views/C2MUploadView.vue'), meta: { roles: ['Super Admin', 'Admin', 'Manager'] } },
+        { path: 'customer-support-center', name: 'customer-support-center', component: () => import('../views/CustomerSupportCenterView.vue'), meta: { requiresAuth: true, roles: ['Super Admin', 'Admin', 'Manager', 'Agent'] } },
+        { path: 'complaints', name: 'complaints', component: () => import('../views/ComplaintsView.vue'), meta: { requiresAuth: true } },
+        { path: 'telegram-notifications', name: 'telegram-notifications', component: () => import('../views/TelegramNotificationsView.vue'), meta: { requiresAuth: true, roles: ['Super Admin', 'Admin'] } }
       ]
     },
     // Legacy auth routes (redirect to new routes)

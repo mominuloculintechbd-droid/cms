@@ -74,7 +74,7 @@ const chartOptions = computed<ChartOptions<'bar'>>(() => {
     },
   };
 
-  if (props.multiAxis) {
+  if (props.multiAxis && options.scales) {
     options.scales.y1 = {
       type: 'linear',
       display: true,

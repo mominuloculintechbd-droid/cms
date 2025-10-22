@@ -114,7 +114,9 @@ export const createUser = (userData: UserData) => {
 
 // --- Customer --- //
 export const getCustomerDetails = (meterNo: string) => {
-  return apiClient.get(`/customers/details/${encodeURIComponent(meterNo)}`);
+  return apiClient.get('/customers/search', {
+    params: { METER_NO: meterNo }
+  });
 };
 
 // --- Content --- //
@@ -141,4 +143,85 @@ export const getMeterReadingsInBulk = (meterNos: string[]) => {
 
 export const deleteAllBillingProfileData = () => {
   return apiClient.delete('/meter-readings/all');
+};
+
+// Estimation endpoints
+export const calculateEstimates = (meterNo: string) => {
+  return apiClient.post(`/meter-readings/estimate/${encodeURIComponent(meterNo)}`);
+};
+
+export const saveEstimates = (meterNo: string, estimates: any[]) => {
+  return apiClient.post('/meter-readings/save-estimates', { meter_no: meterNo, estimates });
+};
+
+export const getCoveredMonths = (meterNo: string) => {
+  return apiClient.get(`/meter-readings/covered-months/${encodeURIComponent(meterNo)}`);
+};
+
+// --- Complaints --- //
+export const getComplaints = (params?: { category?: string; status?: string; search?: string; page?: number }) => {
+  return apiClient.get('/complaints', { params });
+};
+
+export const getComplaintById = (id: number | string) => {
+  return apiClient.get(`/complaints/${id}`);
+};
+
+export const createComplaint = (complaintData: {
+  complaintCategoryId: number;
+  customerId: string;
+  issueDescription: string;
+  status?: string
+}) => {
+  return apiClient.post('/complaints', complaintData);
+};
+
+export const updateComplaint = (id: number | string, complaintData: any) => {
+  return apiClient.put(`/complaints/${id}`, complaintData);
+};
+
+export const deleteComplaint = (id: number | string) => {
+  return apiClient.delete(`/complaints/${id}`);
+};
+
+export const getCustomerInfo = (customerId: string) => {
+  return apiClient.get(`/complaints/customer/${customerId}`);
+};
+
+export const getComplaintAnalytics = (params?: { startDate?: string; endDate?: string }) => {
+  return apiClient.get('/complaints/analytics', { params });
+};
+
+export const getBillStopAnalysis = (customerId: string, meterNo: string) => {
+  return apiClient.get('/bill-stop/analyze', {
+    params: {
+      customerNum: customerId,
+      meterNo: meterNo
+    }
+  });
+};
+
+export const getMeterReplacementHistory = (meterNo: string) => {
+  return apiClient.get(`/meter-replacements/history/${encodeURIComponent(meterNo)}`);
+};
+
+export const getCustomerBillingInfo = (searchValue: string) => {
+  return apiClient.get(`/complaints/billing-info/${encodeURIComponent(searchValue)}`);
+};
+
+// --- Complaint Categories --- //
+export const getComplaintCategories = () => {
+  return apiClient.get('/complaint-categories');
+};
+
+export const createComplaintCategory = (categoryData: { name: string }) => {
+  return apiClient.post('/complaint-categories', categoryData);
+};
+
+export const updateComplaintCategory = (id: number | string, categoryData: { name: string }) => {
+  return apiClient.put(`/complaint-categories/${id}`, categoryData);
+};
+
+export const deleteComplaintCategory = (id: number | string) => {
+  return apiClient.delete(`/complaint-categories/${id}`);
 };

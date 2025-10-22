@@ -50,17 +50,21 @@
           </div>
         </div>
         <div class="row g-3 mb-3">
-          <div class="col-md-4">
+          <div class="col-md-3">
             <label class="form-label">Customer Number</label>
             <input type="text" class="form-control" v-model="meter.customerNumber" disabled>
           </div>
-          <div class="col-md-4">
+          <div class="col-md-3">
             <label class="form-label">Tariff</label>
             <input type="text" class="form-control" v-model="meter.tariff" disabled>
           </div>
-          <div class="col-md-4">
+          <div class="col-md-3">
             <label class="form-label">Connection Date</label>
             <input type="text" class="form-control" v-model="meter.connectionDate" disabled>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Last Bill Date</label>
+            <input type="text" class="form-control" v-model="meter.lastBillDate" disabled>
           </div>
         </div>
 
@@ -130,6 +134,7 @@ interface Meter {
   customerNumber?: string;
   tariff?: string;
   connectionDate?: string;
+  lastBillDate?: string;
   // To store pre-filtered readings from the PDF
   _rawReadings?: Reading[];
 }
@@ -142,6 +147,7 @@ const meters = ref<Meter[]>([
     customerNumber: '',
     tariff: '',
     connectionDate: '',
+    lastBillDate: '',
     _rawReadings: [],
   },
 ]);
@@ -164,24 +170,36 @@ const fetchCustomerDetails = async (meterIndex: number) => {
 
   try {
     const response = await getCustomerDetails(meter.meterNo);
-    const customer = response.data;
 
-    meter.customerNumber = customer.CUSTOMER_NUM;
-    meter.tariff = customer.TARIFF;
-    meter.connectionDate = customer.CONN_DATE ? new Date(customer.CONN_DATE).toLocaleDateString() : 'N/A';
+    // The API returns { customers: [...], totalItems, ... }
+    if (response.data && response.data.customers && response.data.customers.length > 0) {
+      const customer = response.data.customers[0]; // Get first customer
 
-    // Set meter type based on tariff
-    meter.type = customer.TARIFF === 'LT-A' ? 'Residential' : 'Commercial';
+      meter.customerNumber = customer.CUSTOMER_NUM || 'N/A';
+      meter.tariff = customer.TARIFF || 'N/A';
+      meter.connectionDate = customer.CONN_DATE ? new Date(customer.CONN_DATE).toLocaleDateString() : 'N/A';
+      meter.lastBillDate = customer.LAST_BILL_DATE ? new Date(customer.LAST_BILL_DATE).toLocaleDateString() : 'N/A';
 
-    // Filter readings based on the fetched connection date
-    filterReadingsByConnectionDate(meterIndex);
+      // Set meter type based on tariff
+      meter.type = customer.TARIFF === 'LT-A' ? 'Residential' : 'Commercial';
+
+      // Filter readings based on the fetched connection date
+      filterReadingsByConnectionDate(meterIndex);
+    } else {
+      // No customer found
+      meter.customerNumber = 'Not Found';
+      meter.tariff = 'N/A';
+      meter.connectionDate = 'N/A';
+      meter.lastBillDate = 'N/A';
+    }
 
   } catch (error) {
     console.error('Failed to fetch customer details:', error);
-    // Reset fields if customer not found
-    meter.customerNumber = 'Not Found';
+    // Reset fields if API call failed
+    meter.customerNumber = 'Error';
     meter.tariff = 'N/A';
     meter.connectionDate = 'N/A';
+    meter.lastBillDate = 'N/A';
   }
 };
 
@@ -207,6 +225,7 @@ const extractDataFromPDFs = async () => {
   for (const file of selectedPDFs.value) {
     const reader = new FileReader();
     reader.onload = async (e) => {
+      if (!e.target) return;
       const typedarray = new Uint8Array(e.target.result as ArrayBuffer);
       const pdf = await pdfjsLib.getDocument(typedarray).promise;
       let fullText = '';
@@ -214,7 +233,7 @@ const extractDataFromPDFs = async () => {
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
-        fullText += textContent.items.map(item => item.str).join(' ');
+        fullText += textContent.items.map((item: { str: string }) => item.str).join(' ');
       }
 
       const meterMatch = fullText.match(/Meter #\s+(\d+)/);
@@ -229,6 +248,7 @@ const extractDataFromPDFs = async () => {
           customerNumber: '',
           tariff: '',
           connectionDate: '',
+          lastBillDate: '',
         };
 
         const billingDateMatches = [...fullText.matchAll(/Billing Date\s+(\d{2}\/\d{2}\/\d{4})/g)];
@@ -272,6 +292,7 @@ const addMeter = () => {
     customerNumber: '',
     tariff: '',
     connectionDate: '',
+    lastBillDate: '',
     _rawReadings: [],
   });
 };
@@ -288,7 +309,7 @@ const removeReading = (meterIndex: number, readingIndex: number) => {
   meters.value[meterIndex].readings.splice(readingIndex, 1);
 };
 
-const uomMap = {
+const uomMap: { [key: string]: { [key: string]: { [key: string]: string } } } = {
     'L&G': {
         '1P': { total: 'ES-KWH-TOT-1P-DAILY', tod1: 'ES-KWH-TOD1-1P-DAILY', tod2: 'ES-KWH-TOD2-1P-DAILY' },
         '3P': { total: 'ES-KWH-TOT-FWD-3P-DAILY', tod1: 'ES-KWH-TOD1-FWD-3P-DAILY', tod2: 'ES-KWH-TOD2-FWD-3P-DAILY' }
@@ -303,18 +324,18 @@ const uomMap = {
     }
 };
 
-function getMeterPhase(meterNumber) {
+function getMeterPhase(meterNumber: string) {
     const secondDigit = meterNumber.charAt(1);
     return secondDigit === '0' ? '1P' : '3P';
 }
 
-function getMeterBrand(meterNumber) {
+function getMeterBrand(meterNumber: string) {
     const prefix = meterNumber.charAt(0);
     return prefix === '7' ? 'SHENZHEN' : 
            prefix === '8' ? 'WASION' : 'L&G';
 }
 
-function getUOM(meterNumber, type = 'total') {
+function getUOM(meterNumber: string, type = 'total') {
     const brand = getMeterBrand(meterNumber);
     const phase = getMeterPhase(meterNumber);
     return uomMap[brand][phase][type] || 'Unknown';

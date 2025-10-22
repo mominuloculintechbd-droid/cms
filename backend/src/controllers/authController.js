@@ -101,3 +101,32 @@ exports.login = async (req, res) => {
     res.status(500).json({ message: 'An error occurred during the login process.' });
   }
 };
+
+// Get current user
+exports.getMe = async (req, res) => {
+  try {
+    // req.user is set by the protect middleware
+    const user = await User.findByPk(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    const userResponse = {
+      id: user.id,
+      fullName: user.fullName,
+      email: user.email,
+      role: user.role,
+      designation: user.designation,
+      division: user.division,
+      profilePicture: user.profilePicture,
+      status: user.status,
+      phoneNumber: user.phoneNumber,
+    };
+
+    res.status(200).json(userResponse);
+  } catch (error) {
+    console.error('Get me error:', error);
+    res.status(500).json({ message: 'An error occurred while fetching user data.' });
+  }
+};

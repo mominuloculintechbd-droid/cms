@@ -150,7 +150,61 @@ const processSingleRow = async (req, res) => {
   }
 };
 
+// Get replacement history for a meter number
+const getMeterReplacementHistory = async (req, res) => {
+  try {
+    const { meterNo } = req.params;
+
+    if (!meterNo) {
+      return res.status(400).json({ error: 'Meter number is required' });
+    }
+
+    const { MeterReplacement } = require('../models');
+
+    // Find all replacements where the meter was either the old meter or the new meter
+    const replacements = await MeterReplacement.findAll({
+      where: {
+        [require('sequelize').Op.or]: [
+          { oldMeterNumber: meterNo },
+          { replaceMeterNumber: meterNo }
+        ]
+      },
+      order: [['replaceDate', 'DESC']]
+    });
+
+    // Format the response
+    const formattedReplacements = replacements.map(r => ({
+      id: r.id,
+      customerId: r.customerId,
+      oldMeterNumber: r.oldMeterNumber,
+      replaceMeterNumber: r.replaceMeterNumber,
+      installDate: r.installDate,
+      replaceDate: r.replaceDate,
+      lastBillDate: r.lastBillDate,
+      oldMeterLastReads: r.oldMeterLastReads,
+      reason: r.oldMeterNumber === meterNo ?
+        'This meter was replaced' :
+        'This meter replaced another meter',
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt
+    }));
+
+    res.json({
+      meterNumber: meterNo,
+      totalReplacements: formattedReplacements.length,
+      replacements: formattedReplacements
+    });
+  } catch (error) {
+    console.error('Error fetching meter replacement history:', error);
+    res.status(500).json({
+      error: 'Error fetching replacement history',
+      message: error.message
+    });
+  }
+};
+
 module.exports = {
   processMeterReplacementData,
   processSingleRow,
+  getMeterReplacementHistory,
 };

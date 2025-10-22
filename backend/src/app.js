@@ -50,12 +50,14 @@ io.on('connection', (socket) => {
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 
-  // Start Telegram bot for PDF processing only if not in development environment
-  if (process.env.NODE_ENV !== 'development') {
+  // Start Telegram bot based on TELEGRAM_BOT_ENABLED setting
+  const botEnabled = process.env.TELEGRAM_BOT_ENABLED === 'true';
+
+  if (botEnabled) {
     const telegramBotService = require('./services/telegramBotService');
     telegramBotService.start();
   } else {
-    console.log('ℹ️  Telegram bot not started in development mode.');
+    console.log('ℹ️  Telegram bot is disabled (set TELEGRAM_BOT_ENABLED=true in .env to enable)');
   }
 });
 
@@ -63,8 +65,9 @@ server.listen(PORT, () => {
 const shutdown = () => {
   console.log('\n🛑 Shutting down gracefully...');
 
-  // Stop Telegram bot only if not in development environment
-  if (process.env.NODE_ENV !== 'development') {
+  // Stop Telegram bot if it was enabled
+  const botEnabled = process.env.TELEGRAM_BOT_ENABLED === 'true';
+  if (botEnabled) {
     const telegramBotService = require('./services/telegramBotService');
     telegramBotService.stop();
   }

@@ -94,6 +94,47 @@ const analyzeBillStopIssue = async (req, res) => {
   }
 };
 
+// Simplified function to get bill status for Bill Stop complaints
+const getBillStatusForComplaint = async (customerId) => {
+  try {
+    const customer = await Customer.findOne({ where: { CUSTOMER_NUM: customerId } });
+    if (!customer) {
+      return { error: 'Customer not found', billStatus: null, lastBillDate: null, shouldAutoClose: false };
+    }
+
+    // Get bill status
+    const lastBill = await LastBillDate.findOne({ where: { CUSTOMER_NUM: customer.CUSTOMER_NUM } });
+    const lastBillDate = lastBill ? lastBill.LAST_BILL_DATE : null;
+    const now = new Date();
+    let billStatus = 'Unknown';
+    let shouldAutoClose = false;
+
+    if (lastBillDate) {
+      const lb = new Date(lastBillDate);
+      if (lb.getMonth() === now.getMonth() && lb.getFullYear() === now.getFullYear()) {
+        billStatus = 'Bill Start';
+        shouldAutoClose = true; // Auto-close because billing is active
+      } else {
+        billStatus = 'Bill Stop';
+      }
+    } else {
+      billStatus = 'Bill Not Generated';
+    }
+
+    return {
+      error: null,
+      billStatus,
+      lastBillDate,
+      shouldAutoClose
+    };
+
+  } catch (error) {
+    console.error('Error getting bill status:', error);
+    return { error: error.message, billStatus: null, lastBillDate: null, shouldAutoClose: false };
+  }
+};
+
 module.exports = {
-  analyzeBillStopIssue
+  analyzeBillStopIssue,
+  getBillStatusForComplaint
 };

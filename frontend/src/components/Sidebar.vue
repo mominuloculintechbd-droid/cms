@@ -30,6 +30,12 @@
         <router-link class="nav-link" to="/bill-stop">Bill Stop</router-link>
       </li>
       <li v-if="auth.isAuthenticated">
+        <router-link class="nav-link" to="/customer-support-center">Customer Support</router-link>
+      </li>
+      <li v-if="auth.isAuthenticated">
+        <router-link class="nav-link" to="/complaints">Complaints</router-link>
+      </li>
+      <li v-if="auth.isAuthenticated">
         <router-link class="nav-link" to="/meter-replacement">Meter Replacement</router-link>
       </li>
       <li v-if="auth.isAuthenticated">
@@ -43,6 +49,9 @@
       </li>
       <li v-if="auth.isAuthenticated && (auth.user?.role === 'Super Admin' || auth.user?.role === 'Admin')">
         <router-link class="nav-link" to="/admin">Admin Dashboard</router-link>
+      </li>
+      <li v-if="auth.isAuthenticated && (auth.user?.role === 'Super Admin' || auth.user?.role === 'Admin')">
+        <router-link class="nav-link" to="/telegram-notifications">Telegram Notifications</router-link>
       </li>
       <li v-if="auth.isAuthenticated && auth.user?.role === 'Manager'">
         <router-link class="nav-link" to="/manager">Manager Dashboard</router-link>

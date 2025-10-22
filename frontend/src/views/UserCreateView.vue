@@ -112,15 +112,35 @@
                   <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                   <circle cx="12" cy="13" r="4"/>
                 </svg>
-                Profile Picture URL
+                Profile Picture
               </label>
-              <input 
-                type="url" 
-                id="profilePicture" 
-                class="form-control" 
-                v-model="user.profilePicture" 
-                placeholder="Enter profile picture URL"
-              >
+              <div class="profile-picture-upload">
+                <div class="upload-preview" v-if="profilePicturePreview">
+                  <img :src="profilePicturePreview" alt="Profile Preview" />
+                  <button type="button" class="remove-image" @click="removeProfilePicture">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="18" y1="6" x2="6" y2="18"/>
+                      <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
+                </div>
+                <div class="upload-area" v-else @click="triggerFileInput">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                  </svg>
+                  <p>Click to upload profile picture</p>
+                  <span class="upload-hint">Max 5MB, JPG, PNG, or GIF</span>
+                </div>
+                <input
+                  type="file"
+                  ref="fileInput"
+                  id="profilePictureInput"
+                  @change="handleFileUpload"
+                  accept="image/*"
+                  class="file-input-hidden"
+                >
+              </div>
             </div>
           </div>
 
@@ -387,6 +407,8 @@ const isLoading = ref(false);
 const successMessage = ref('');
 const errorMessage = ref('');
 const errors = ref<Record<string, string>>({});
+const profilePicturePreview = ref('');
+const fileInput = ref<HTMLInputElement | null>(null);
 
 // Available roles based on current user's permissions
 const availableRoles = computed(() => {
@@ -493,6 +515,47 @@ const validateForm = () => {
 // Toggle password visibility
 const togglePassword = () => {
   showPassword.value = !showPassword.value;
+};
+
+// File upload functions
+const triggerFileInput = () => {
+  fileInput.value?.click();
+};
+
+const handleFileUpload = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+
+  if (file) {
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      errorMessage.value = 'Please select an image file.';
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      errorMessage.value = 'Image size should be less than 5MB.';
+      return;
+    }
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      profilePicturePreview.value = e.target?.result as string;
+      user.value.profilePicture = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+    errorMessage.value = '';
+  }
+};
+
+const removeProfilePicture = () => {
+  profilePicturePreview.value = '';
+  user.value.profilePicture = '';
+  if (fileInput.value) {
+    fileInput.value.value = '';
+  }
 };
 
 // Create user
@@ -1027,13 +1090,120 @@ onMounted(() => {
   }
 }
 
+/* Profile Picture Upload */
+.profile-picture-upload {
+  width: 100%;
+}
+
+.upload-preview {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 2px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.upload-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.remove-image {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: rgba(220, 38, 38, 0.9);
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  padding: 0.25rem;
+}
+
+.remove-image:hover {
+  background: #dc2626;
+  transform: scale(1.1);
+}
+
+.remove-image svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.upload-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  border: 2px dashed #d1d5db;
+  border-radius: 0.75rem;
+  background: #f9fafb;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+  min-height: 150px;
+}
+
+.upload-area:hover {
+  border-color: #4f46e5;
+  background: #f8fafc;
+}
+
+.upload-area svg {
+  width: 3rem;
+  height: 3rem;
+  color: #6b7280;
+  margin-bottom: 0.75rem;
+}
+
+.upload-area p {
+  margin: 0 0 0.25rem 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.upload-hint {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.file-input-hidden {
+  display: none;
+}
+
 @media (max-width: 480px) {
   .user-form {
     padding: 1rem;
   }
-  
+
   .form-section-header h3 {
     font-size: 1.25rem;
+  }
+
+  .upload-preview {
+    width: 120px;
+    height: 120px;
+  }
+
+  .upload-area {
+    padding: 1.5rem;
+    min-height: 120px;
+  }
+
+  .upload-area svg {
+    width: 2.5rem;
+    height: 2.5rem;
   }
 }
 </style>

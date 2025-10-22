@@ -220,7 +220,43 @@ import Papa from 'papaparse';
 
 const toast = useToast();
 
-const single = reactive({
+// --- TYPE DEFINITIONS ---
+interface MonthlyResult {
+  month: string;
+  consumption: number;
+  cumulative: number;
+  days: number;
+  tod1Consumption: number;
+  tod2Consumption: number;
+  cumulativeTOD1: number;
+  cumulativeTOD2: number;
+}
+
+interface SingleResultData {
+  customerId: string;
+  tariffType: 'residential' | 'commercial';
+  meterNumber: string;
+  meterType: string;
+  startDate: string;
+  endDate: string;
+  lastReads: number;
+  totalConsumption: number;
+  tod1Consumption: number;
+  tod2Consumption: number;
+  lastReadsTOD1: number;
+  lastReadsTOD2: number;
+  results: MonthlyResult[];
+}
+
+interface BulkResult {
+  customerId: string;
+  meterNumber: string;
+  tariff: 'residential' | 'commercial';
+  totalConsumption: number;
+  monthlyResults: MonthlyResult[];
+}
+
+const single = reactive<SingleResultData>({
   customerId: '',
   tariffType: 'residential',
   meterNumber: '',
@@ -237,12 +273,12 @@ const single = reactive({
 });
 
 const bulk = reactive({
-  file: null,
-  results: [],
-  detailsVisible: {},
+  file: null as File | null,
+  results: [] as BulkResult[],
+  detailsVisible: {} as { [key: number]: boolean },
 });
 
-const uomMap = {
+const uomMap: { [key: string]: { [key: string]: { [key: string]: string } } } = {
     'L&G': {
         '1P': { total: 'ES-KWH-TOT-1P-DAILY', tod1: 'ES-KWH-TOD1-1P-DAILY', tod2: 'ES-KWH-TOD2-1P-DAILY' },
         '3P': { total: 'ES-KWH-TOT-FWD-3P-DAILY', tod1: 'ES-KWH-TOD1-FWD-3P-DAILY', tod2: 'ES-KWH-TOD2-FWD-3P-DAILY' }
@@ -259,7 +295,7 @@ const uomMap = {
 
 function updateMeterTypeBadge() {
   const prefix = single.meterNumber.charAt(0);
-  const types = {
+  const types: { [key: string]: string } = {
       '7': 'SHENZHEN',
       '8': 'WASION',
       '9': 'L&G'
@@ -267,29 +303,30 @@ function updateMeterTypeBadge() {
   single.meterType = types[prefix] || '?';
 }
 
-function getMeterPhase(meterNumber) {
+function getMeterPhase(meterNumber: string) {
     const secondDigit = meterNumber.charAt(1);
     return secondDigit === '0' ? '1P' : '3P';
 }
 
-function getMeterBrand(meterNumber) {
+function getMeterBrand(meterNumber: string) {
     const prefix = meterNumber.charAt(0);
     return prefix === '7' ? 'SHENZHEN' : 
            prefix === '8' ? 'WASION' : 'L&G';
 }
 
-function getUOM(meterNumber, type = 'total') {
+function getUOM(meterNumber: string, type = 'total') {
     const brand = getMeterBrand(meterNumber);
     const phase = getMeterPhase(meterNumber);
     return uomMap[brand][phase][type] || 'Unknown';
 }
 
-function calculateConsumption(data) {
+function calculateConsumption(data: Partial<SingleResultData>): MonthlyResult[] {
     const {tariffType, startDate, endDate, lastReads, totalConsumption, tod1Consumption, tod2Consumption, lastReadsTOD1, lastReadsTOD2} = data;
+    if (!startDate || !endDate) throw new Error('Start and End date are required');
     const start = new Date(startDate);
     const end = new Date(endDate);
 
-    if (start > end) throw new Error('End date must be after start date');
+    if (start.getTime() > end.getTime()) throw new Error('End date must be after start date');
 
     let totalCons = 0;
     let tod1Cons = 0;
@@ -301,13 +338,13 @@ function calculateConsumption(data) {
         totalCons = tod1Cons + tod2Cons;
         if (totalCons <= 0) throw new Error('Total consumption must be positive');
     } else {
-        totalCons = totalConsumption;
+        totalCons = totalConsumption || 0;
         if (isNaN(totalCons)) throw new Error('Invalid consumption value');
     }
 
     let currentDate = new Date(start);
-    const results = [];
-    const totalDays = Math.ceil((end - start) / (1000 * 3600 * 24)) + 1;
+    const results: MonthlyResult[] = [];
+    const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 3600 * 24)) + 1;
     
     let dailyConsumption = totalCons / totalDays;
     let dailyTod1 = tariffType === 'commercial' ? tod1Cons / totalDays : 0;
@@ -321,11 +358,11 @@ function calculateConsumption(data) {
         const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
         const periodEnd = end < monthEnd ? end : monthEnd;
         
-        const daysInPeriod = Math.ceil((periodEnd - currentDate) / (1000 * 3600 * 24)) + 1;
+        const daysInPeriod = Math.ceil((periodEnd.getTime() - currentDate.getTime()) / (1000 * 3600 * 24)) + 1;
         const monthlyConsumption = daysInPeriod * dailyConsumption;
         cumulativeConsumption += monthlyConsumption;
         
-        const result = {
+        const result: MonthlyResult = {
             month: `${String(currentDate.getMonth() + 1).padStart(2, '0')}/${currentDate.getFullYear()}`,
             consumption: monthlyConsumption,
             cumulative: cumulativeConsumption,
@@ -360,7 +397,7 @@ function handleCalculate() {
   try {
     single.results = calculateConsumption(single);
     toast.success('Calculation successful!');
-  } catch (error) {
+  } catch (error: any) {
     toast.error(error.message);
   }
 }
@@ -388,7 +425,7 @@ function exportSingleCSV() {
     link.download = `meter-readings-${Date.now()}.csv`;
     link.click();
     toast.success('CSV exported successfully');
-  } catch (error) {
+  } catch (error: any) {
     toast.error(error.message);
   }
 }
@@ -438,7 +475,7 @@ function exportSinglePDF() {
 
     doc.save(`estimation-report-${single.meterNumber}.pdf`);
     toast.success('PDF exported successfully');
-  } catch (error) {
+  } catch (error: any) {
     toast.error(error.message);
   }
 }
@@ -459,8 +496,11 @@ function resetSingleForm() {
   single.results = [];
 }
 
-function handleBulkFile(event) {
-  bulk.file = event.target.files[0];
+function handleBulkFile(event: Event) {
+  const target = event.target as HTMLInputElement;
+  if (target.files) {
+    bulk.file = target.files[0];
+  }
 }
 
 function processBulk() {
@@ -473,7 +513,7 @@ function processBulk() {
     header: true,
     skipEmptyLines: true,
     complete: (results) => {
-      bulk.results = results.data.map(row => {
+      bulk.results = results.data.map((row: any) => {
         try {
           const monthlyResults = calculateConsumption({
             tariffType: row.TariffType || 'residential',
@@ -501,20 +541,20 @@ function processBulk() {
             totalConsumption: totalConsumption,
             monthlyResults: monthlyResults,
           };
-        } catch (e) {
+        } catch (e: any) {
           toast.warning(`Skipping row for meter ${row.MeterNumber}: ${e.message}`);
           return null;
         }
-      }).filter(r => r !== null);
+      }).filter((r): r is BulkResult => r !== null);
       toast.success(`Processed ${bulk.results.length} meters successfully`);
     },
-    error: (error) => {
+    error: (error: any) => {
       toast.error(`Error parsing CSV: ${error.message}`);
     }
   });
 }
 
-function toggleBulkDetail(index) {
+function toggleBulkDetail(index: number) {
   bulk.detailsVisible[index] = !bulk.detailsVisible[index];
 }
 
@@ -567,8 +607,8 @@ function exportBulkPDF() {
       
       let startY = 40;
       if (result.tariff === 'commercial') {
-          doc.text(`TOD1 Consumption: ${result.monthlyResults.reduce((acc, m) => acc + m.tod1Consumption, 0).toFixed(2)} kWh`, 15, 35);
-          doc.text(`TOD2 Consumption: ${result.monthlyResults.reduce((acc, m) => acc + m.tod2Consumption, 0).toFixed(2)} kWh`, 15, 40);
+          doc.text(`TOD1 Consumption: ${result.monthlyResults.reduce((acc: number, m: MonthlyResult) => acc + m.tod1Consumption, 0).toFixed(2)} kWh`, 15, 35);
+          doc.text(`TOD2 Consumption: ${result.monthlyResults.reduce((acc: number, m: MonthlyResult) => acc + m.tod2Consumption, 0).toFixed(2)} kWh`, 15, 40);
           startY = 50;
       }
       doc.text(`Period: ${result.monthlyResults[0].month} to ${result.monthlyResults.slice(-1)[0].month}`, 15, startY - 5);
@@ -577,7 +617,7 @@ function exportBulkPDF() {
           [["Month", "Total", "Consumption", "TOD1", "TOD2", "Days"]] :
           [["Month", "Reading", "Consumption", "Days"]];
           
-      const rows = result.monthlyResults.map(month => {
+      const rows = result.monthlyResults.map((month: MonthlyResult) => {
           if (result.tariff === 'commercial') {
               return [month.month, month.cumulative.toFixed(2), month.consumption.toFixed(2), month.cumulativeTOD1.toFixed(2), month.cumulativeTOD2.toFixed(2), month.days];
           } else {

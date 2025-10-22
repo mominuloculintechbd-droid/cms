@@ -6,6 +6,9 @@ import vue from '@vitejs/plugin-vue'
 
 // https://vite.dev/config/
 export default defineConfig({
+  optimizeDeps: {
+    include: ['@ckeditor/ckeditor5-vue', '@ckeditor/ckeditor5-build-classic'],
+  },
   plugins: [
     vue({
       // Explicit Vue plugin configuration

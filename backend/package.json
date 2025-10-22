@@ -9,7 +9,9 @@
     "dev": "cross-env NODE_ENV=development nodemon src/app.js",
     "setup": "node start-server.js",
     "test-login": "node test-login.js",
-    "create-admin": "node createSuperAdmin.js"
+    "create-admin": "node createSuperAdmin.js",
+    "clear-telegram": "node clearTelegramConflict.js",
+    "get-group-id": "node getGroupChatId.js"
   },
   "keywords": [],
   "author": "",

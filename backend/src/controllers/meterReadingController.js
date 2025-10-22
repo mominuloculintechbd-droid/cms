@@ -6,6 +6,7 @@ const Customer = require('../models/Customer');
 const LastBillDate = require('../models/LastBillDate');
 const PDFDocument = require('pdfkit');
 const { sequelize } = require('../models');
+const { estimateMissingMonths } = require('../services/estimationService');
 
 const uploadReadings = async (req, res) => {
   const uploadedFiles = Array.isArray(req.files) ? req.files : (req.file ? [req.file] : []);
@@ -391,10 +392,253 @@ const deleteAllReadings = async (req, res) => {
   }
 };
 
+/**
+ * Calculate estimates for missing months (doesn't save to DB)
+ */
+const calculateEstimates = async (req, res) => {
+  try {
+    const { meterNo } = req.params;
+
+    // Get all readings for this meter
+    const readings = await MeterReading.findAll({
+      where: {
+        meter_no: meterNo,
+        is_estimated: false  // Only use actual readings for estimation
+      },
+      order: [['reading_date', 'ASC']]
+    });
+
+    // Get customer info
+    const customer = await Customer.findOne({ where: { METER_NO: meterNo } });
+    if (!customer) {
+      return res.status(404).json({ error: 'Customer not found for this meter number' });
+    }
+
+    // Get last bill date
+    const lastBill = await LastBillDate.findOne({ where: { CUSTOMER_NUM: customer.CUSTOMER_NUM } });
+    const lastBillDate = lastBill ? lastBill.LAST_BILL_DATE : customer.CONN_DATE;
+
+    if (!lastBillDate) {
+      return res.status(400).json({ error: 'No last bill date or connection date found' });
+    }
+
+    // Calculate missing months
+    const now = new Date();
+    const monthsToAnalyze = [];
+    let cursor = new Date(lastBillDate);
+    cursor.setDate(1);
+    cursor.setMonth(cursor.getMonth() + 1);
+    const end = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    while (cursor <= end) {
+      monthsToAnalyze.push({
+        key: `${cursor.getFullYear()}-${cursor.getMonth()}`,
+        label: cursor.toLocaleString('default', { month: 'long', year: 'numeric' }),
+        date: new Date(cursor)
+      });
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+
+    // Check which months have readings
+    const readingMonthKeys = new Set(readings.map(r => {
+      const d = new Date(r.reading_date);
+      return `${d.getFullYear()}-${d.getMonth()}`;
+    }));
+
+    const missingMonthKeys = monthsToAnalyze
+      .filter(m => !readingMonthKeys.has(m.key))
+      .map(m => m.key);
+
+    if (missingMonthKeys.length === 0) {
+      return res.json({
+        meter_no: meterNo,
+        message: 'No missing months to estimate',
+        missing_months: [],
+        estimates: []
+      });
+    }
+
+    // Calculate estimates
+    const estimates = estimateMissingMonths(readings, missingMonthKeys, lastBillDate);
+
+    // Add human-readable month labels to estimates
+    const estimatesWithLabels = estimates.map(est => {
+      const [year, month] = est.month.split('-').map(Number);
+      const date = new Date(year, month, 1); // 1st of month
+      return {
+        ...est,
+        month_label: date.toLocaleString('default', { month: 'long', year: 'numeric' }),
+        reading_date: new Date(year, month, 1).toISOString() // For consistency
+      };
+    });
+
+    res.json({
+      meter_no: meterNo,
+      last_bill_date: lastBillDate,
+      missing_months: missingMonthKeys,
+      estimates: estimatesWithLabels,
+      total_estimated_kwh: estimates.reduce((sum, est) => sum + est.estimated_kwh, 0)
+    });
+
+  } catch (error) {
+    console.error('Error calculating estimates:', error);
+    res.status(500).json({ error: 'Failed to calculate estimates', details: error.message });
+  }
+};
+
+/**
+ * Save estimates to database
+ */
+const saveEstimates = async (req, res) => {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const { meter_no, estimates } = req.body;
+
+    if (!meter_no || !estimates || !Array.isArray(estimates)) {
+      return res.status(400).json({ error: 'Invalid request body. Expected meter_no and estimates array.' });
+    }
+
+    // Prepare records for bulk insert
+    const records = estimates.map(est => {
+      const [year, month] = est.month.split('-').map(Number);
+      return {
+        meter_no: meter_no,
+        reading_date: new Date(year, month, 1), // Use 1st of month
+        value_kwh: est.estimated_kwh,
+        is_estimated: true,
+        estimation_method: est.method,
+        estimated_at: new Date()
+      };
+    });
+
+    // Check for duplicates
+    for (const record of records) {
+      const existing = await MeterReading.findOne({
+        where: {
+          meter_no: record.meter_no,
+          reading_date: record.reading_date
+        },
+        transaction
+      });
+
+      if (existing) {
+        // Update existing record
+        await existing.update({
+          value_kwh: record.value_kwh,
+          is_estimated: record.is_estimated,
+          estimation_method: record.estimation_method,
+          estimated_at: record.estimated_at
+        }, { transaction });
+      } else {
+        // Insert new record
+        await MeterReading.create(record, { transaction });
+      }
+    }
+
+    await transaction.commit();
+
+    res.json({
+      message: 'Estimates saved successfully',
+      count: records.length
+    });
+
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Error saving estimates:', error);
+    res.status(500).json({ error: 'Failed to save estimates', details: error.message });
+  }
+};
+
+/**
+ * Get covered months (actual + estimated readings)
+ */
+const getCoveredMonths = async (req, res) => {
+  try {
+    const { meterNo } = req.params;
+
+    // Get all readings (actual + estimated)
+    const readings = await MeterReading.findAll({
+      where: { meter_no: meterNo },
+      order: [['reading_date', 'DESC']],
+    });
+
+    const customer = await Customer.findOne({ where: { METER_NO: meterNo } });
+
+    // Get analysis including covered months
+    let analysis = null;
+    if (customer) {
+      const lastBill = await LastBillDate.findOne({ where: { CUSTOMER_NUM: customer.CUSTOMER_NUM } });
+      const lastBillDate = lastBill ? lastBill.LAST_BILL_DATE : null;
+      const now = new Date();
+
+      const monthsToAnalyze = [];
+      if (lastBillDate) {
+        let cursor = new Date(lastBillDate);
+        cursor.setDate(1);
+        cursor.setMonth(cursor.getMonth() + 1);
+        const end = new Date(now.getFullYear(), now.getMonth(), 1);
+        while (cursor <= end) {
+          monthsToAnalyze.push({
+            key: `${cursor.getFullYear()}-${cursor.getMonth()}`,
+            label: cursor.toLocaleString('default', { month: 'long', year: 'numeric' })
+          });
+          cursor.setMonth(cursor.getMonth() + 1);
+        }
+      }
+
+      const readingMonthKeys = new Set(readings.map(r => {
+        const d = new Date(r.reading_date);
+        return `${d.getFullYear()}-${d.getMonth()}`;
+      }));
+
+      const coveredMonths = monthsToAnalyze
+        .filter(m => readingMonthKeys.has(m.key))
+        .map(m => m.label);
+
+      const missingMonths = monthsToAnalyze
+        .filter(m => !readingMonthKeys.has(m.key))
+        .map(m => m.label);
+
+      analysis = {
+        LAST_BILL_DATE: lastBillDate,
+        coveredMonths,
+        missingMonths,
+        coverage_percentage: monthsToAnalyze.length > 0
+          ? Math.round((coveredMonths.length / monthsToAnalyze.length) * 100)
+          : 0
+      };
+    }
+
+    // Filter to show only covered months
+    const coveredReadings = readings.filter(r => {
+      const d = new Date(r.reading_date);
+      const monthLabel = d.toLocaleString('default', { month: 'long', year: 'numeric' });
+      return analysis?.coveredMonths.includes(monthLabel);
+    });
+
+    res.json({
+      meter_no: meterNo,
+      total_readings: coveredReadings.length,
+      actual_readings: coveredReadings.filter(r => !r.is_estimated).length,
+      estimated_readings: coveredReadings.filter(r => r.is_estimated).length,
+      readings: coveredReadings,
+      analysis
+    });
+
+  } catch (error) {
+    console.error('Error getting covered months:', error);
+    res.status(500).json({ error: 'Failed to get covered months', details: error.message });
+  }
+};
+
 module.exports = {
   uploadReadings,
   getReadingsByMeterNo,
   getReadingsInBulk,
   downloadReadingsAnalysis,
   deleteAllReadings,
+  calculateEstimates,
+  saveEstimates,
+  getCoveredMonths,
 };
