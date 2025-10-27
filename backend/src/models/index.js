@@ -6,6 +6,7 @@ const Content = require('./Content');
 const Project = require('./Project');
 const TicketLink = require('./TicketLink');
 const Team = require('./Team');
+const TeamMember = require('./TeamMember');
 const UserTeam = require('./UserTeam');
 const TeamProject = require('./TeamProject');
 const MdmRead = require('./MdmRead');
@@ -38,6 +39,7 @@ const models = {
   Project,
   TicketLink,
   Team,
+  TeamMember,
   UserTeam,
   TeamProject,
   MdmRead,
@@ -101,11 +103,24 @@ Sprint.belongsTo(Team, { foreignKey: 'teamId', as: 'team' });
 Sprint.hasMany(Ticket, { foreignKey: 'sprintId', as: 'tickets' });
 Project.hasMany(Sprint, { foreignKey: 'projectId', as: 'sprints' });
 
-// Team relations
-Team.belongsToMany(User, { through: UserTeam, foreignKey: 'teamId', otherKey: 'userId' });
-User.belongsToMany(Team, { through: UserTeam, foreignKey: 'userId', otherKey: 'teamId' });
-Team.belongsToMany(Project, { through: TeamProject, foreignKey: 'teamId', otherKey: 'projectId' });
-Project.belongsToMany(Team, { through: TeamProject, foreignKey: 'projectId', otherKey: 'teamId' });
+// Team relations (legacy - keeping for backward compatibility)
+Team.belongsToMany(User, { through: UserTeam, foreignKey: 'teamId', otherKey: 'userId', as: 'legacyUsers' });
+User.belongsToMany(Team, { through: UserTeam, foreignKey: 'userId', otherKey: 'teamId', as: 'legacyTeams' });
+Team.belongsToMany(Project, { through: TeamProject, foreignKey: 'teamId', otherKey: 'projectId', as: 'legacyProjects' });
+Project.belongsToMany(Team, { through: TeamProject, foreignKey: 'projectId', otherKey: 'teamId', as: 'legacyTeams' });
+
+// New Project/Team/TeamMember relations
+Project.hasMany(Team, { as: 'teams', foreignKey: 'projectId', onDelete: 'CASCADE' });
+Team.belongsTo(Project, { as: 'project', foreignKey: 'projectId' });
+
+Team.belongsTo(User, { as: 'leader', foreignKey: 'leaderId' });
+User.hasMany(Team, { as: 'ledTeams', foreignKey: 'leaderId' });
+
+Team.belongsToMany(User, { as: 'members', through: TeamMember, foreignKey: 'teamId', otherKey: 'userId' });
+User.belongsToMany(Team, { as: 'teams', through: TeamMember, foreignKey: 'userId', otherKey: 'teamId' });
+
+Project.belongsTo(User, { as: 'creator', foreignKey: 'createdBy' });
+User.hasMany(Project, { as: 'createdProjects', foreignKey: 'createdBy' });
 
 // TelegramNotificationSetting associations
 TelegramNotificationSetting.belongsTo(ComplaintCategory, { foreignKey: 'categoryId', as: 'category' });

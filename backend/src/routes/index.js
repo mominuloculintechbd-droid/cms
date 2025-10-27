@@ -12,6 +12,7 @@ const mdmReadsRoutes = require('./mdmReads');
 const userRoutes = require('./users'); // Added user routes
 const reportRoutes = require('./reports');
 const notificationRoutes = require('./notifications');
+const projectRoutes = require('./projects');
 const teamRoutes = require('./teams');
 const batchOperationalReportRoutes = require('./batchOperationalReport');
 const billStopAnalysisRoutes = require('./billStopAnalysis');
@@ -36,6 +37,7 @@ router.use('/meter-replacements', meterReplacementRoutes); // Alias for consiste
 router.use('/mdm-reads', mdmReadsRoutes);
 router.use('/reports', reportRoutes);
 router.use('/notifications', notificationRoutes);
+router.use('/projects', projectRoutes);
 router.use('/teams', teamRoutes);
 router.use('/batch-operational-report', batchOperationalReportRoutes);
 router.use('/bill-stop-analysis', billStopAnalysisRoutes);

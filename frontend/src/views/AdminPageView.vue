@@ -72,7 +72,7 @@
     <!-- Action Bar -->
     <div class="action-bar">
       <div class="action-group">
-        <button class="btn btn-primary" @click="openCreateUserModal">
+        <router-link to="/users/create" class="btn btn-primary">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
             <circle cx="9" cy="7" r="4"/>
@@ -80,7 +80,7 @@
             <line x1="22" y1="11" x2="16" y2="11"/>
           </svg>
           Create User
-        </button>
+        </router-link>
         <button class="btn btn-secondary" @click="exportUsers">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -197,14 +197,14 @@
                 <div class="action-buttons">
                   <button
                     v-if="canEdit(user)"
-                    @click="editUser(user)"
+                    @click.stop="editUser(user)"
                     class="btn btn-sm btn-outline"
                   >
                     Edit
                   </button>
                   <button
                     v-if="canEdit(user)"
-                    @click="handleDeleteUser(user.id)"
+                    @click.stop="handleDeleteUser(user.id)"
                     class="btn btn-sm btn-danger"
                   >
                     Delete
@@ -241,7 +241,7 @@
       <div class="table-header">
         <h3>Complaint Category Management</h3>
         <div class="table-actions">
-          <button class="btn btn-primary" @click="openCategoryModal">Add Category</button>
+          <button class="btn btn-primary" @click.stop="openCategoryModal">Add Category</button>
         </div>
       </div>
       <div class="table-container">
@@ -257,8 +257,8 @@
               <td>{{ category.name }}</td>
               <td class="actions-cell">
                 <div class="action-buttons">
-                  <button @click="editCategory(category)" class="btn btn-sm btn-outline">Edit</button>
-                  <button @click="deleteCategory(category.id)" class="btn btn-sm btn-danger">Delete</button>
+                  <button @click.stop="editCategory(category)" class="btn btn-sm btn-outline">Edit</button>
+                  <button @click.stop="deleteCategory(category.id)" class="btn btn-sm btn-danger">Delete</button>
                 </div>
               </td>
             </tr>
@@ -273,21 +273,29 @@
   <Teleport to="body">
     <div
       v-if="showCategoryModal"
-      class="modal-overlay"
-      @click="closeCategoryModal"
+      class="modal-overlay category-modal-overlay"
+      @click.self="closeCategoryModal"
       :style="{
         position: 'fixed',
         top: '0',
         left: '0',
         width: '100vw',
         height: '100vh',
-        zIndex: '10000'
+        zIndex: 10000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
       }"
     >
-      <div class="modal" @click.stop>
+      <div class="modal category-modal" @click.stop :style="{
+        background: '#ffffff',
+        color: '#000000',
+        position: 'relative',
+        zIndex: 10001
+      }">
         <div class="modal-header">
           <h3>{{ editingCategory ? 'Edit' : 'Add' }} Category</h3>
-          <button class="btn btn-ghost" @click="closeCategoryModal">&times;</button>
+          <button class="btn btn-ghost" @click.stop="closeCategoryModal">&times;</button>
         </div>
         <div class="modal-body">
           <form @submit.prevent="saveCategory">
@@ -298,65 +306,8 @@
           </form>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-secondary" @click="closeCategoryModal">Cancel</button>
-          <button class="btn btn-primary" @click="saveCategory">Save</button>
-        </div>
-      </div>
-    </div>
-  </Teleport>
-
-  <!-- Create User Modal -->
-  <Teleport to="body">
-    <div
-      v-if="showCreateUserModal"
-      class="modal-overlay"
-      @click="closeModal"
-      :style="{
-        position: 'fixed',
-        top: '0',
-        left: '0',
-        width: '100vw',
-        height: '100vh',
-        zIndex: '10000'
-      }"
-    >
-      <div class="modal" @click.stop>
-        <div class="modal-header">
-          <h3>Create New User</h3>
-          <button class="btn btn-ghost" @click="closeModal">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="18" y1="6" x2="6" y2="18"/>
-              <line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <form @submit.prevent="handleCreateUser">
-            <div class="form-group">
-              <label>Full Name</label>
-              <input type="text" class="form-control" v-model="newUser.fullName" required>
-            </div>
-            <div class="form-group">
-              <label>Email</label>
-              <input type="email" class="form-control" v-model="newUser.email" required>
-            </div>
-            <div class="form-group">
-              <label>Role</label>
-              <select class="form-control" v-model="newUser.role" required>
-                <option v-for="role in roles" :key="role" :value="role">{{ role }}</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Password</label>
-              <input type="password" class="form-control" v-model="newUser.password" required>
-            </div>
-          </form>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary" @click="closeModal">Cancel</button>
-          <button class="btn btn-primary" @click="handleCreateUser" :disabled="isCreating">
-            {{ isCreating ? 'Creating...' : 'Create User' }}
-          </button>
+          <button class="btn btn-secondary" @click.stop="closeCategoryModal">Cancel</button>
+          <button class="btn btn-primary" @click.stop="saveCategory">Save</button>
         </div>
       </div>
     </div>
@@ -366,18 +317,30 @@
   <Teleport to="body">
     <div
       v-if="showEditUserModal"
-      class="modal-overlay"
-      @click="closeEditModal"
+      class="modal-overlay edit-user-modal-overlay"
+      @click.self="closeEditModal"
       :style="{
         position: 'fixed',
         top: '0',
         left: '0',
         width: '100vw',
         height: '100vh',
-        zIndex: '10000'
+        zIndex: '10001',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(0, 0, 0, 0.5)'
       }"
     >
-      <div class="modal" @click.stop>
+      <div class="modal edit-user-modal" @click.stop :style="{
+        background: '#ffffff',
+        color: '#000000',
+        position: 'relative',
+        zIndex: '10002',
+        display: 'block',
+        visibility: 'visible',
+        opacity: '1'
+      }">
         <div class="modal-header">
           <h3>Edit User</h3>
           <button class="btn btn-ghost" @click="closeEditModal">
@@ -404,6 +367,10 @@
               </select>
             </div>
           </form>
+          <div v-else style="padding: 2rem; text-align: center; color: red;">
+            <p>ERROR: No user data loaded!</p>
+            <p>editingUser is: {{ editingUser }}</p>
+          </div>
         </div>
         <div class="modal-footer">
           <button class="btn btn-secondary" @click="closeEditModal">Cancel</button>
@@ -443,12 +410,10 @@ const fetchComplaintCategories = async () => {
 };
 
 const openCategoryModal = () => {
-  console.log('Opening category modal');
   showCategoryModal.value = true;
 };
 
 const closeCategoryModal = () => {
-  console.log('Closing category modal');
   showCategoryModal.value = false;
   editingCategory.value = null;
   categoryForm.value = { name: '' };
@@ -492,7 +457,6 @@ const loading = ref(true);
 const error = ref<string | null>(null);
 const searchQuery = ref('');
 const roleFilter = ref('');
-const showCreateUserModal = ref(false);
 const isCreating = ref(false);
 const currentPage = ref(1);
 const pageSize = ref(10);
@@ -511,13 +475,6 @@ interface User {
   profilePicture?: string;
   lastLogin?: string;
 }
-
-const newUser = ref({
-  fullName: '',
-  email: '',
-  role: 'User' as UserData['role'],
-  password: ''
-});
 
 // Statistics
 const stats = ref({
@@ -650,10 +607,10 @@ const exportUsers = () => {
   // Mock export functionality
   const csvContent = "data:text/csv;charset=utf-8," +
     "Name,Email,Role,Status\n" +
-    users.value.map(user => 
+    users.value.map(user =>
       `${user.fullName},${user.email},${user.role},${user.status}`
     ).join("\n");
-  
+
   const encodedUri = encodeURI(csvContent);
   const link = document.createElement("a");
   link.setAttribute("href", encodedUri);
@@ -663,36 +620,50 @@ const exportUsers = () => {
   document.body.removeChild(link);
 };
 
-const handleCreateUser = async () => {
-  isCreating.value = true;
-  try {
-    const response = await createUser(newUser.value);
-    users.value.unshift(response.data);
-    stats.value.totalUsers = users.value.length;
-    stats.value.activeUsers = users.value.filter(u => u.status === 'active').length;
-    
-    // Reset form
-    newUser.value = {
-      fullName: '',
-      email: '',
-      role: 'User',
-      password: ''
-    };
-    
-    closeModal();
-  } catch (err: any) {
-    console.error('Error creating user:', err);
-  } finally {
-    isCreating.value = false;
-  }
-};
-
 const openEditModal = (user: User) => {
+  console.log('=== openEditModal called ===');
+  console.log('User data:', user);
   editingUser.value = { ...user };
+  console.log('editingUser.value set to:', editingUser.value);
   showEditUserModal.value = true;
+  console.log('showEditUserModal.value set to:', showEditUserModal.value);
+
+  // Check DOM after Vue updates
+  setTimeout(() => {
+    console.log('=== Checking all modals in DOM ===');
+    console.log('showEditUserModal:', showEditUserModal.value);
+    console.log('showCategoryModal:', showCategoryModal.value);
+
+    const allOverlays = document.querySelectorAll('.modal-overlay');
+    console.log('Total modal overlays found:', allOverlays.length);
+    allOverlays.forEach((overlay, index) => {
+      console.log(`Overlay ${index}:`, overlay.className, 'z-index:', window.getComputedStyle(overlay).zIndex);
+    });
+
+    const modalElement = document.querySelector('.edit-user-modal-overlay');
+    console.log('Edit modal overlay exists in DOM:', !!modalElement);
+    if (modalElement) {
+      const styles = window.getComputedStyle(modalElement);
+      console.log('Modal display:', styles.display);
+      console.log('Modal visibility:', styles.visibility);
+      console.log('Modal opacity:', styles.opacity);
+      console.log('Modal z-index:', styles.zIndex);
+      console.log('Modal position:', styles.position);
+
+      const modalContent = document.querySelector('.edit-user-modal');
+      console.log('Edit modal content exists:', !!modalContent);
+      if (modalContent) {
+        console.log('Modal content display:', window.getComputedStyle(modalContent).display);
+      }
+    } else {
+      console.error('Edit modal overlay NOT found in DOM!');
+    }
+  }, 100);
 };
 
 const closeEditModal = () => {
+  console.log('=== closeEditModal called ===');
+  console.trace('Stack trace for closeEditModal:');
   showEditUserModal.value = false;
   editingUser.value = null;
 };
@@ -712,22 +683,6 @@ const updateUserHandler = async () => {
 
 const editUser = (user: User) => {
   openEditModal(user);
-};
-
-const openCreateUserModal = () => {
-  console.log('Opening create user modal');
-  showCreateUserModal.value = true;
-};
-
-const closeModal = () => {
-  console.log('Closing create user modal');
-  showCreateUserModal.value = false;
-  newUser.value = {
-    fullName: '',
-    email: '',
-    role: 'User',
-    password: ''
-  };
 };
 
 const getRoleClass = (role: string) => {
@@ -767,46 +722,13 @@ onMounted(async () => {
   await fetchTicketStats();
 });
 
-// Debug watchers
-watch(showCreateUserModal, (newVal) => {
-  console.log('showCreateUserModal changed to:', newVal);
-  if (newVal) {
-    // Check if modal element exists in DOM
-    setTimeout(() => {
-      const modalOverlay = document.querySelector('.modal-overlay');
-      console.log('Modal overlay element found:', !!modalOverlay);
-      if (modalOverlay) {
-        const computedStyle = window.getComputedStyle(modalOverlay);
-        const rect = modalOverlay.getBoundingClientRect();
-        console.log('=== Modal CSS Properties ===');
-        console.log('Display:', computedStyle.display);
-        console.log('Z-index:', computedStyle.zIndex);
-        console.log('Position:', computedStyle.position);
-        console.log('Opacity:', computedStyle.opacity);
-        console.log('Visibility:', computedStyle.visibility);
-        console.log('Top:', computedStyle.top);
-        console.log('Left:', computedStyle.left);
-        console.log('Right:', computedStyle.right);
-        console.log('Bottom:', computedStyle.bottom);
-        console.log('Width:', computedStyle.width);
-        console.log('Height:', computedStyle.height);
-        console.log('=== Bounding Rect ===');
-        console.log('Rect:', rect);
-        console.log('Is in viewport:', rect.top >= 0 && rect.left >= 0);
-      } else {
-        console.error('Modal overlay not found in DOM!');
-      }
-    }, 100);
-  }
-});
-
-watch(showCategoryModal, (newVal) => {
-  console.log('showCategoryModal changed to:', newVal);
-});
-
-watch(showEditUserModal, (newVal) => {
-  console.log('showEditUserModal changed to:', newVal);
-});
+// Debug watcher
+watch(showEditUserModal, (newVal, oldVal) => {
+  console.log('=== showEditUserModal changed ===');
+  console.log('Old value:', oldVal);
+  console.log('New value:', newVal);
+  console.log('editingUser:', editingUser.value);
+}, { immediate: true });
 </script>
 
 <style>
@@ -1222,6 +1144,13 @@ watch(showEditUserModal, (newVal) => {
   z-index: 10000 !important;
   animation: fadeIn 0.2s ease-out;
   overflow-y: auto;
+  padding: 20px;
+}
+
+.category-modal-overlay {
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: all !important;
 }
 
 @keyframes fadeIn {
@@ -1234,7 +1163,7 @@ watch(showEditUserModal, (newVal) => {
 }
 
 .modal {
-  background: white;
+  background: white !important;
   border-radius: 1rem;
   width: 90%;
   max-width: 500px;
@@ -1242,6 +1171,27 @@ watch(showEditUserModal, (newVal) => {
   overflow: hidden;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   animation: slideUp 0.3s ease-out;
+  position: relative;
+  z-index: 10001;
+}
+
+.category-modal {
+  background: #ffffff !important;
+  color: #000000 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: block !important;
+}
+
+.category-modal * {
+  visibility: visible !important;
+  color: inherit;
+}
+
+.category-modal .modal-header h3,
+.category-modal .modal-body label,
+.category-modal .modal-body input {
+  color: #000000 !important;
 }
 
 @keyframes slideUp {
