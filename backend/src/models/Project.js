@@ -12,6 +12,11 @@ const Project = sequelize.define('Project', {
     type: DataTypes.STRING,
     allowNull: false,
   },
+  key: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true,
+  },
   description: {
     type: DataTypes.TEXT,
     allowNull: true,
@@ -42,6 +47,22 @@ const Project = sequelize.define('Project', {
 }, {
   timestamps: true,
   tableName: 'Projects',
+  hooks: {
+    beforeValidate: (project) => {
+      // Auto-generate key from name if not provided
+      if (!project.key && project.name) {
+        project.key = project.name
+          .toUpperCase()
+          .replace(/[^A-Z0-9]+/g, '')
+          .substring(0, 10);
+
+        // Add timestamp to ensure uniqueness
+        if (project.key.length < 3) {
+          project.key = `PROJ${Date.now().toString().slice(-6)}`;
+        }
+      }
+    },
+  },
 });
 
 module.exports = Project;
